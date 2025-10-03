@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -15,6 +16,7 @@ export default function Register() {
   const [error, setError] = useState('');
   
   const { register } = useAuth();
+  const { addToast } = useToast();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,15 +26,31 @@ export default function Register() {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      addToast({
+        type: 'warning',
+        title: 'Password Mismatch',
+        message: 'Please make sure your passwords match'
+      });
       setLoading(false);
       return;
     }
 
     try {
       await register(email, password, name);
+      addToast({
+        type: 'success',
+        title: 'Welcome to Peregrinus!',
+        message: 'Your account has been created successfully'
+      });
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      setError(errorMessage);
+      addToast({
+        type: 'error',
+        title: 'Registration Failed',
+        message: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -41,14 +59,10 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="nav-bar rounded-xl shadow-xl p-8 w-full max-w-md">
-        {/* PEREGRINVS Header for auth pages */}
         <div className="text-center mb-8">
-          <h1 className="roman-heading text-3xl md:text-4xl tracking-widest nav-title-light dark:nav-title-dark mb-6">
-            PEREGRINVS
-          </h1>
-          <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest mb-2">
+          <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest mb-2">
             JOIN PEREGRINVS
-          </h2>
+          </h1>
           <p className="roman-body text-amber-700 dark:text-orange-400">
             Create your account
           </p>
@@ -121,7 +135,14 @@ export default function Register() {
             disabled={loading}
             className="search-button w-full text-xl py-4 disabled:opacity-50"
           >
-            {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
+            {loading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>CREATING ACCOUNT...</span>
+              </div>
+            ) : (
+              'CREATE ACCOUNT'
+            )}
           </button>
         </form>
 

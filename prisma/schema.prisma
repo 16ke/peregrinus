@@ -14,6 +14,7 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  preferences UserPreferences?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -21,14 +22,41 @@ model User {
   notifications  Notification[]
 }
 
-model TrackedFlight {
+model UserPreferences {
   id          String   @id @default(cuid())
-  userId      String
-  origin      String
-  destination String
-  targetPrice Decimal
+  userId      String   @unique
+  emailNotifications Boolean @default(true)
+  inAppNotifications Boolean @default(true)
+  currency    String   @default("EUR")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TrackedFlight {
+  id               String   @id @default(cuid())
+  userId           String
+  origin           String
+  destination      String
+  targetPrice      Decimal
+  // Enhanced tracking fields
+  departureDate    DateTime?  // Specific flight date or start of range
+  returnDate       DateTime?  // For round trips
+  dateRangeStart   DateTime?  // Start of tracking window
+  dateRangeEnd     DateTime?  // End of tracking window
+  preferredTimeStart String?  // "06:00" - Start of preferred time window
+  preferredTimeEnd   String?  // "22:00" - End of preferred time window
+  isRoundTrip      Boolean @default(false)
+  airlineFilter    String?    // Specific airline or "any"
+  maxStops         Int?       // 0 for direct, 1 for 1 stop, etc.
+  bookingUrl       String?    // To redirect users
+  isActive         Boolean @default(true)
+  // Smart notification tracking
+  lastNotifiedPrice Decimal?   // Price when last notification was sent
+  lastNotificationType String? // "price_drop" or "price_rise"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   priceUpdates PriceUpdate[]
@@ -39,8 +67,11 @@ model PriceUpdate {
   id               String   @id @default(cuid())
   trackedFlightId  String
   price            Decimal
-  currency         String   @default("USD")
+  currency         String   @default("EUR")
   recordedAt       DateTime @default(now())
+  airline          String?  // Which airline this price is for
+  flightNumber     String?  // Specific flight if available
+  departureTime    DateTime? // When this specific flight departs
 
   trackedFlight TrackedFlight @relation(fields: [trackedFlightId], references: [id], onDelete: Cascade)
 }
@@ -50,8 +81,11 @@ model Notification {
   userId           String
   trackedFlightId  String
   message          String
-  type             String   // "price_drop", "alert", etc.
+  type             String   // "price_drop", "price_rise", "alert", "info"
   isRead           Boolean  @default(false)
+  sentViaEmail     Boolean  @default(false)
+  sentViaInApp     Boolean  @default(true)
+  metadata         Json?    // Store additional data like oldPrice, newPrice, etc.
   createdAt        DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

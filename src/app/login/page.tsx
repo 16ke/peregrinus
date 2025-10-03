@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -13,6 +14,7 @@ export default function Login() {
   const [error, setError] = useState('');
   
   const { login } = useAuth();
+  const { addToast } = useToast();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,9 +24,20 @@ export default function Login() {
 
     try {
       await login(email, password);
+      addToast({
+        type: 'success',
+        title: 'Welcome Back!',
+        message: 'Successfully signed in to your account'
+      });
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      addToast({
+        type: 'error',
+        title: 'Sign In Failed',
+        message: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -33,14 +46,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="nav-bar rounded-xl shadow-xl p-8 w-full max-w-md">
-        {/* PEREGRINVS Header for auth pages */}
         <div className="text-center mb-8">
-          <h1 className="roman-heading text-3xl md:text-4xl tracking-widest nav-title-light dark:nav-title-dark mb-6">
-            PEREGRINVS
-          </h1>
-          <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest mb-2">
+          <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest mb-2">
             WELCOME BACK
-          </h2>
+          </h1>
           <p className="roman-body text-amber-700 dark:text-orange-400">
             Sign in to your account
           </p>
@@ -86,7 +95,14 @@ export default function Login() {
             disabled={loading}
             className="search-button w-full text-xl py-4 disabled:opacity-50"
           >
-            {loading ? 'SIGNING IN...' : 'SIGN IN'}
+            {loading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>SIGNING IN...</span>
+              </div>
+            ) : (
+              'SIGN IN'
+            )}
           </button>
         </form>
 
