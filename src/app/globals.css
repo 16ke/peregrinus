@@ -1,26 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Garamond', serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+  
+  --color-gold-50: #fffdf2;
+  --color-gold-100: #fef9d9;
+  --color-gold-200: #fdf0b3;
+  --color-gold-300: #fce68d;
+  --color-gold-400: #fbdc67;
+  --color-gold-500: #facd41;
+  --color-gold-600: #d4a72c;
+  --color-gold-700: #ae8117;
+  --color-gold-800: #885b02;
+  --color-gold-900: #624500;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Light Mode - GOLD theme */
+:root, .light {
+  --bg-primary: #ffffff;
+  --bg-pattern: url("data:image/svg+xml,%3Csvg width='32' height='64' viewBox='0 0 32 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 28h20V16h-4v8H4V4h28v28h-4V8H8v12h4v-8h12v20H0v-4zm12 8h20v4H16v24H0v-4h12V36zm16 12h-4v12h8v4H20V44h12v12h-4v-8zM0 36h8v20H0v-4h4V40H0v-4z' fill='%2368d7c0' fill-opacity='0.81' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --card-bg: #ffffff;
+  --card-border: #ffd700;
+  --nav-bg: #fffbeb;
+  --nav-border: #d4a72c;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+}
+
+/* Dark Mode - ORANGE theme */
+.dark {
+  --bg-primary: #000000;
+  --bg-pattern: url("data:image/svg+xml,%3Csvg width='32' height='64' viewBox='0 0 32 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 28h20V16h-4v8H4V4h28v28h-4V8H8v12h4v-8h12v20H0v-4zm12 8h20v4H16v24H0v-4h12V36zm16 12h-4v12h8v4H20V44h12v12h-4v-8zM0 36h8v20H0v-4h4V40H0v-4z' fill='%23ff8400' fill-opacity='0.6' fill-rule='evenodd'/%3E%3C/svg%3E");
+  --card-bg: #000000;
+  --card-border: #ff8400;
+  --nav-bg: #000000;
+  --nav-border: #ff8400;
+  --text-primary: #f7fafc;
+  --text-secondary: #e2e8f0;
+}
+
+.roman-card {
+  background-color: var(--card-bg);
+  border: 3px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 
+              0 8px 25px -5px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.roman-heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  line-height: 1.2;
+}
+
+.roman-body {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.roman-input {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0.5rem;
+  border: 3px solid var(--card-border);
+  transition: all 0.2s;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.roman-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-border) 30%, transparent),
+              0 6px 20px -4px rgba(0, 0, 0, 0.2);
+  border-color: var(--card-border);
+}
+
+.nav-bar {
+  background-color: var(--nav-bg);
+  border-bottom: 4px solid var(--nav-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.nav-title-light {
+  background: linear-gradient(to right, #d4a72c, #ae8117, #885b02);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nav-title-dark {
+  background: linear-gradient(to right, #ff8400, #e67300, #cc6200);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.search-button {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 600;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  border: 3px solid var(--card-border);
+  box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.3),
+              0 4px 10px -3px rgba(0, 0, 0, 0.2);
+}
+
+/* Light mode - bronze on white */
+.light .search-button {
+  background: linear-gradient(135deg, #d4a72c, #ae8117);
+  color: white;
+}
+
+/* Dark mode - black on amber */
+.dark .search-button {
+  background: linear-gradient(135deg, #ff8400, #e67300);
+  color: black;
+}
+
+.search-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.4),
+              0 8px 20px -5px rgba(0, 0, 0, 0.3);
+}
+
+.flight-card {
+  background-color: var(--card-bg);
+  border: 2px solid var(--card-border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  background-image: var(--bg-pattern);
+  background-size: 128px 256px;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  body {
+    background-size: 96px 192px;
+  }
 }

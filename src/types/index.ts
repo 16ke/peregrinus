@@ -12,6 +12,7 @@ export interface FlightSearch {
   destination: string;
   departureDate: string;
   returnDate?: string;
+  maxPrice?: string; 
 }
 
 export interface Flight {
