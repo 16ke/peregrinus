@@ -1,4 +1,4 @@
-// src/app/tracked-flight/[id]/page.tsx
+// src/app/tracked-flight/[id]/page.tsx - REAL DATA VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -50,47 +50,26 @@ export default function TrackedFlightDetail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
+    if (user && params.id) {
       fetchTrackedFlight();
     }
   }, [user, params.id]);
 
   const fetchTrackedFlight = async () => {
     try {
-      // This would be your API endpoint - using mock for now
-      const mockFlight: TrackedFlightDetail = {
-        id: params.id as string,
-        origin: 'STN',
-        destination: 'VLC',
-        targetPrice: 80,
-        currentPrice: 95,
-        lowestPrice: 75,
-        highestPrice: 120,
-        isRoundTrip: false,
-        dateRangeStart: new Date('2024-06-10'),
-        dateRangeEnd: new Date('2024-06-15'),
-        preferredTimeStart: '06:00',
-        preferredTimeEnd: '22:00',
-        airlineFilter: 'ANY',
-        maxStops: 2,
-        isActive: true,
-        createdAt: new Date('2024-01-15'),
-        priceUpdates: [
-          { id: '1', price: 120, currency: 'EUR', recordedAt: new Date('2024-01-15'), airline: 'RYR' },
-          { id: '2', price: 110, currency: 'EUR', recordedAt: new Date('2024-01-16'), airline: 'RYR' },
-          { id: '3', price: 95, currency: 'EUR', recordedAt: new Date('2024-01-17'), airline: 'RYR' },
-          { id: '4', price: 105, currency: 'EUR', recordedAt: new Date('2024-01-18'), airline: 'EZY' },
-          { id: '5', price: 88, currency: 'EUR', recordedAt: new Date('2024-01-19'), airline: 'RYR' },
-          { id: '6', price: 75, currency: 'EUR', recordedAt: new Date('2024-01-20'), airline: 'WZZ' },
-          { id: '7', price: 95, currency: 'EUR', recordedAt: new Date('2024-01-21'), airline: 'RYR' },
-        ],
-        notifications: [
-          { id: '1', message: 'Price dropped to €75! Time to book!', type: 'price_drop', createdAt: new Date('2024-01-20'), isRead: true },
-          { id: '2', message: 'Price increased to €95. Too late!', type: 'price_rise', createdAt: new Date('2024-01-21'), isRead: false },
-        ],
-      };
-      
-      setFlight(mockFlight);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/flights/track/${params.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFlight(data.trackedFlight);
+      } else {
+        setError('Failed to load flight details');
+      }
     } catch (error) {
       console.error('Fetch error:', error);
       setError('Failed to load flight details');
@@ -100,11 +79,11 @@ export default function TrackedFlightDetail() {
   };
 
   const handleStopTracking = async () => {
-    if (!confirm('Are you sure you want to stop tracking this flight?')) return;
+    if (!flight || !confirm('Are you sure you want to stop tracking this flight?')) return;
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/flights/track/${flight?.id}`, {
+      const response = await fetch(`/api/flights/track/${flight.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -117,6 +96,13 @@ export default function TrackedFlightDetail() {
     } catch (error) {
       console.error('Stop tracking error:', error);
       alert('Failed to stop tracking');
+    }
+  };
+
+  const handleFindFlights = () => {
+    // Redirect to search page with pre-filled route
+    if (flight) {
+      router.push(`/?origin=${flight.origin}&destination=${flight.destination}`);
     }
   };
 
@@ -201,10 +187,7 @@ export default function TrackedFlightDetail() {
                     <div className="flex items-center space-x-1 text-amber-700 dark:text-orange-400">
                       <Calendar className="h-4 w-4" />
                       <span className="roman-body">
-                        {flight.dateRangeStart && flight.dateRangeEnd 
-                          ? `${formatDate(flight.dateRangeStart)} - ${formatDate(flight.dateRangeEnd)}`
-                          : 'Flexible dates'
-                        }
+                        {flight.departureDate ? formatDate(new Date(flight.departureDate)) : 'Flexible dates'}
                       </span>
                     </div>
                     {flight.preferredTimeStart && (
@@ -273,34 +256,40 @@ export default function TrackedFlightDetail() {
             </h2>
             
             <div className="space-y-3">
-              {flight.priceUpdates.slice().reverse().map((update, index) => {
-                const isLowest = update.price === flight.lowestPrice;
-                const isHighest = update.price === flight.highestPrice;
-                const isCurrent = index === 0;
-                
-                return (
-                  <div key={update.id} className="flex items-center justify-between p-3 rounded-lg border-2 border-amber-200 dark:border-orange-800">
-                    <div className="flex items-center space-x-3">
-                      <div className={`
-                        w-3 h-3 rounded-full
-                        ${isLowest ? 'bg-green-500' : 
-                          isHighest ? 'bg-red-500' : 
-                          isCurrent ? 'bg-amber-500' : 'bg-amber-300'}
-                      `} />
-                      <div>
-                        <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">
-                          €{update.price}
-                        </div>
-                        <div className="text-sm text-amber-600 dark:text-orange-400">
-                          {update.airline} • {formatDateTime(update.recordedAt)}
+              {flight.priceUpdates.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="roman-body text-amber-700 dark:text-orange-400">No price data yet. Checking for prices...</p>
+                </div>
+              ) : (
+                flight.priceUpdates.slice().reverse().map((update, index) => {
+                  const isLowest = update.price === flight.lowestPrice;
+                  const isHighest = update.price === flight.highestPrice;
+                  const isCurrent = index === 0;
+                  
+                  return (
+                    <div key={update.id} className="flex items-center justify-between p-3 rounded-lg border-2 border-amber-200 dark:border-orange-800">
+                      <div className="flex items-center space-x-3">
+                        <div className={`
+                          w-3 h-3 rounded-full
+                          ${isLowest ? 'bg-green-500' : 
+                            isHighest ? 'bg-red-500' : 
+                            isCurrent ? 'bg-amber-500' : 'bg-amber-300'}
+                        `} />
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">
+                            €{update.price}
+                          </div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">
+                            {update.airline || 'Multiple'} • {formatDateTime(update.recordedAt)}
+                          </div>
                         </div>
                       </div>
+                      {isLowest && <TrendingDown className="h-5 w-5 text-green-500" />}
+                      {isHighest && <TrendingUp className="h-5 w-5 text-red-500" />}
                     </div>
-                    {isLowest && <TrendingDown className="h-5 w-5 text-green-500" />}
-                    {isHighest && <TrendingUp className="h-5 w-5 text-red-500" />}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -353,21 +342,25 @@ export default function TrackedFlightDetail() {
         </div>
 
         {/* Quick Actions */}
-        {flight.currentPrice <= flight.targetPrice && (
-          <div className="nav-bar rounded-xl shadow-xl p-6">
-            <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest text-center">
-              🎉 PRICE IS GOOD! TIME TO BOOK
-            </h2>
-            <div className="text-center">
-              <button className="search-button text-xl py-4 px-12">
-                FIND AVAILABLE FLIGHTS
-              </button>
-              <p className="roman-body text-amber-700 dark:text-orange-400 mt-3">
-                Current price (€{flight.currentPrice}) is below your target (€{flight.targetPrice})
-              </p>
-            </div>
+        <div className="nav-bar rounded-xl shadow-xl p-6">
+          <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest text-center">
+            {flight.currentPrice <= flight.targetPrice ? '🎉 PRICE IS GOOD! TIME TO BOOK' : 'FIND CURRENT FLIGHTS'}
+          </h2>
+          <div className="text-center">
+            <button 
+              onClick={handleFindFlights}
+              className="search-button text-xl py-4 px-12"
+            >
+              {flight.currentPrice <= flight.targetPrice ? 'BOOK FLIGHTS NOW' : 'CHECK CURRENT PRICES'}
+            </button>
+            <p className="roman-body text-amber-700 dark:text-orange-400 mt-3">
+              {flight.currentPrice <= flight.targetPrice 
+                ? `Current price (€${flight.currentPrice}) is below your target (€${flight.targetPrice})`
+                : `Search for current flights on ${flight.origin} → ${flight.destination}`
+              }
+            </p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx
+// src/app/dashboard/page.tsx - NO CURRENCY COMPLEXITY
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -114,9 +114,6 @@ export default function Dashboard() {
 
   const fetchTrackedFlights = async () => {
     try {
-      // Simulate API delay to see skeleton
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       const token = localStorage.getItem('token');
       const response = await fetch('/api/flights/track', {
         headers: {
@@ -126,7 +123,8 @@ export default function Dashboard() {
 
       if (response.ok) {
         const data = await response.json();
-        setTrackedFlights(data.trackedFlights);
+        console.log('Fetched tracked flights:', data.trackedFlights);
+        setTrackedFlights(data.trackedFlights || []);
       } else {
         setError('Failed to load tracked flights');
         addToast({
@@ -198,11 +196,6 @@ export default function Dashboard() {
       month: 'short',
       year: 'numeric'
     });
-  };
-
-  const formatDateRange = (start?: Date, end?: Date) => {
-    if (!start || !end) return 'Flexible dates';
-    return `${formatDate(start)} - ${formatDate(end)}`;
   };
 
   if (!user) {
@@ -293,15 +286,14 @@ export default function Dashboard() {
                             {flight.isRoundTrip && ' (Round Trip)'}
                           </h3>
                           <p className="roman-body text-amber-700 dark:text-orange-400">
-                            {formatDateRange(flight.dateRangeStart, flight.dateRangeEnd)}
-                            {flight.preferredTimeStart && ` • ${flight.preferredTimeStart}-${flight.preferredTimeEnd}`}
+                            {flight.departureDate ? formatDate(new Date(flight.departureDate)) : 'Flexible dates'}
                             {flight.airlineFilter && flight.airlineFilter !== 'ANY' && ` • ${flight.airlineFilter}`}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Price Info */}
+                    {/* Price Info - SIMPLIFIED: Hardcoded € symbol */}
                     <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-start xl:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-0 lg:space-y-2 xl:space-y-0 xl:space-x-4 mb-4 lg:mb-0">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-amber-800 dark:text-orange-500">
@@ -334,6 +326,13 @@ export default function Dashboard() {
 
                     {/* Actions */}
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                      <Link
+                        href={`/tracked-flight/${flight.id}`}
+                        className="px-4 py-2 border-2 border-amber-500 dark:border-orange-500 text-amber-800 dark:text-orange-400 rounded-lg hover:bg-amber-50 dark:hover:bg-orange-900 transition-colors roman-body font-semibold text-center"
+                      >
+                        VIEW DETAILS
+                      </Link>
+                      
                       <button
                         onClick={() => {
                           if (confirm('Are you sure you want to stop tracking this flight?')) {

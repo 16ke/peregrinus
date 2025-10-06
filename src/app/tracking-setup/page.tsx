@@ -1,4 +1,4 @@
-// src/app/tracking-setup/page.tsx
+// src/app/tracking-setup/page.tsx - NO BULLSHIT VERSION
 'use client';
 
 import { useState } from 'react';
@@ -25,39 +25,20 @@ const AIRLINES = [
   { code: 'V7', name: 'Volotea' },
 ];
 
-const CURRENCIES = [
-  { code: 'EUR', symbol: '€', name: 'EUR' },
-  { code: 'GBP', symbol: '£', name: 'GBP' },
-];
-
 export default function TrackingSetup() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
   
   const [formData, setFormData] = useState({
-    // Basic route
     origin: '',
     destination: '',
     isRoundTrip: false,
-    
-    // Date flexibility
-    dateRangeStart: '',
-    dateRangeEnd: '',
     departureDate: '',
     returnDate: '',
-    
-    // Time preferences
-    preferredTimeStart: '06:00',
-    preferredTimeEnd: '22:00',
-    
-    // Filters
     airlineFilter: 'ANY',
-    maxStops: 2,
-    
-    // Price & notifications
+    maxStops: 0,
     targetPrice: '',
-    currency: 'EUR',
     emailNotifications: true,
     inAppNotifications: true,
   });
@@ -78,7 +59,7 @@ export default function TrackingSetup() {
       return;
     }
 
-    if (!formData.origin || !formData.destination || !formData.targetPrice) {
+    if (!formData.origin || !formData.destination || !formData.targetPrice || !formData.departureDate) {
       setError('Please fill in all required fields');
       addToast({
         type: 'warning',
@@ -88,18 +69,14 @@ export default function TrackingSetup() {
       return;
     }
 
-    if (formData.dateRangeStart && formData.dateRangeEnd) {
-      const start = new Date(formData.dateRangeStart);
-      const end = new Date(formData.dateRangeEnd);
-      if (start > end) {
-        setError('End date must be after start date');
-        addToast({
-          type: 'warning',
-          title: 'Invalid Date Range',
-          message: 'End date must be after start date'
-        });
-        return;
-      }
+    if (formData.isRoundTrip && !formData.returnDate) {
+      setError('Return date is required for round trips');
+      addToast({
+        type: 'warning',
+        title: 'Return Date Required',
+        message: 'Please select a return date for round trips'
+      });
+      return;
     }
 
     setLoading(true);
@@ -117,14 +94,9 @@ export default function TrackingSetup() {
           origin: formData.origin,
           destination: formData.destination,
           targetPrice: Number(formData.targetPrice),
-          currency: formData.currency,
           isRoundTrip: formData.isRoundTrip,
-          dateRangeStart: formData.dateRangeStart || undefined,
-          dateRangeEnd: formData.dateRangeEnd || undefined,
-          departureDate: formData.departureDate || undefined,
+          departureDate: formData.departureDate,
           returnDate: formData.returnDate || undefined,
-          preferredTimeStart: formData.preferredTimeStart,
-          preferredTimeEnd: formData.preferredTimeEnd,
           airlineFilter: formData.airlineFilter === 'ANY' ? undefined : formData.airlineFilter,
           maxStops: formData.maxStops,
         }),
@@ -133,8 +105,8 @@ export default function TrackingSetup() {
       if (response.ok) {
         addToast({
           type: 'success',
-          title: 'Tracking Setup Complete!',
-          message: `Now tracking ${formData.origin} → ${formData.destination} below ${formData.currency}${formData.targetPrice}`
+          title: 'Tracking Started!',
+          message: `Now tracking ${formData.origin} → ${formData.destination} for flights below €${formData.targetPrice}`
         });
         router.push('/dashboard');
       } else {
@@ -191,11 +163,8 @@ export default function TrackingSetup() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="nav-bar rounded-xl shadow-xl p-8 mb-8">
         <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 mb-2 text-center tracking-widest">
-          SMART PRICE TRACKING
+          TRACK FLIGHT PRICES
         </h1>
-        <p className="roman-body text-amber-700 dark:text-orange-400 text-center mb-8">
-          Set up intelligent flight monitoring with flexible preferences
-        </p>
         
         <form onSubmit={handleSubmit} className="space-y-8">
           {error && (
@@ -204,11 +173,10 @@ export default function TrackingSetup() {
             </div>
           )}
 
-          {/* ... REST OF THE FORM REMAINS EXACTLY THE SAME ... */}
           {/* Route Section */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
-              ROUTE
+              FLIGHT ROUTE
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -222,7 +190,7 @@ export default function TrackingSetup() {
                   className="roman-input w-full"
                   required
                 >
-                  <option value="">Select origin</option>
+                  <option value="">Select departure city</option>
                   {CITIES.map((city) => (
                     <option key={city.code} value={city.code}>
                       {city.name} ({city.code})
@@ -241,7 +209,7 @@ export default function TrackingSetup() {
                   className="roman-input w-full"
                   required
                 >
-                  <option value="">Select destination</option>
+                  <option value="">Select destination city</option>
                   {CITIES.map((city) => (
                     <option key={city.code} value={city.code}>
                       {city.name} ({city.code})
@@ -260,7 +228,7 @@ export default function TrackingSetup() {
                   className="w-5 h-5 text-amber-600 dark:text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-amber-500 dark:focus:ring-orange-500"
                 />
                 <span className="roman-body text-amber-800 dark:text-orange-500 font-semibold">
-                  Round trip journey
+                  Round trip
                 </span>
               </label>
             </div>
@@ -269,45 +237,13 @@ export default function TrackingSetup() {
           {/* Dates Section */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
-              DATES
+              TRAVEL DATES
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-              <div>
-                <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  FLEXIBLE DATE RANGE START
-                </label>
-                <input
-                  type="date"
-                  value={formData.dateRangeStart}
-                  onChange={(e) => handleInputChange('dateRangeStart', e.target.value)}
-                  className="roman-input w-full dark:bg-black dark:text-white"
-                  onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                />
-              </div>
-
-              <div>
-                <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  FLEXIBLE DATE RANGE END
-                </label>
-                <input
-                  type="date"
-                  value={formData.dateRangeEnd}
-                  onChange={(e) => handleInputChange('dateRangeEnd', e.target.value)}
-                  className="roman-input w-full dark:bg-black dark:text-white"
-                  onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                />
-              </div>
-            </div>
-
-            <p className="roman-body text-amber-700 dark:text-orange-400 text-sm mb-4">
-              Or specify exact dates:
-            </p>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  EXACT DEPARTURE DATE
+                  DEPARTURE DATE *
                 </label>
                 <input
                   type="date"
@@ -315,13 +251,15 @@ export default function TrackingSetup() {
                   onChange={(e) => handleInputChange('departureDate', e.target.value)}
                   className="roman-input w-full dark:bg-black dark:text-white"
                   onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                  required
+                  min={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
               {formData.isRoundTrip && (
                 <div>
                   <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                    EXACT RETURN DATE
+                    RETURN DATE *
                   </label>
                   <input
                     type="date"
@@ -329,49 +267,18 @@ export default function TrackingSetup() {
                     onChange={(e) => handleInputChange('returnDate', e.target.value)}
                     className="roman-input w-full dark:bg-black dark:text-white"
                     onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                    required
+                    min={formData.departureDate || new Date().toISOString().split('T')[0]}
                   />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Time Preferences */}
-          <div className="roman-card p-6">
-            <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
-              TIME PREFERENCES
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  PREFERRED START TIME
-                </label>
-                <input
-                  type="time"
-                  value={formData.preferredTimeStart}
-                  onChange={(e) => handleInputChange('preferredTimeStart', e.target.value)}
-                  className="roman-input w-full dark:bg-black dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  PREFERRED END TIME
-                </label>
-                <input
-                  type="time"
-                  value={formData.preferredTimeEnd}
-                  onChange={(e) => handleInputChange('preferredTimeEnd', e.target.value)}
-                  className="roman-input w-full dark:bg-black dark:text-white"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Filters */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
-              FILTERS
+              FLIGHT PREFERENCES
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -410,41 +317,29 @@ export default function TrackingSetup() {
             </div>
           </div>
 
-          {/* Price & Notifications */}
+          {/* Price & Notifications - SIMPLIFIED: No currency selection */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
-              PRICE & NOTIFICATIONS
+              PRICE ALERTS
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                  TARGET PRICE *
-                </label>
-                <div className="flex space-x-3">
-                  <select
-                    value={formData.currency}
-                    onChange={(e) => handleInputChange('currency', e.target.value)}
-                    className="roman-input !w-32"
-                  >
-                    {CURRENCIES.map((currency) => (
-                      <option key={currency.code} value={currency.code}>
-                        {currency.symbol} {currency.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    placeholder="Enter target price"
-                    value={formData.targetPrice}
-                    onChange={(e) => handleInputChange('targetPrice', e.target.value)}
-                    className="roman-input flex-1 min-w-0"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
+            <div className="mb-6">
+              <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
+                TARGET PRICE (€) *
+              </label>
+              <input
+                type="number"
+                placeholder="Enter target price in euros"
+                value={formData.targetPrice}
+                onChange={(e) => handleInputChange('targetPrice', e.target.value)}
+                className="roman-input w-full"
+                min="0"
+                step="0.01"
+                required
+              />
+              <p className="text-sm text-amber-600 dark:text-orange-400 mt-2">
+                We'll notify you when flight prices drop below €{formData.targetPrice}
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -456,7 +351,7 @@ export default function TrackingSetup() {
                   className="w-5 h-5 text-amber-600 dark:text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-amber-500 dark:focus:ring-orange-500"
                 />
                 <span className="roman-body text-amber-800 dark:text-orange-500 font-semibold">
-                  Receive email notifications
+                  Email notifications
                 </span>
               </label>
 
@@ -468,7 +363,7 @@ export default function TrackingSetup() {
                   className="w-5 h-5 text-amber-600 dark:text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-amber-500 dark:focus:ring-orange-500"
                 />
                 <span className="roman-body text-amber-800 dark:text-orange-500 font-semibold">
-                  Receive in-app notifications
+                  In-app notifications
                 </span>
               </label>
             </div>

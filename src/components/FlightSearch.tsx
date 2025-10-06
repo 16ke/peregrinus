@@ -1,10 +1,11 @@
-// src/components/FlightSearch.tsx
+// src/components/FlightSearch.tsx - COMPLETE FIXED VERSION
 'use client';
 
 import { useState } from 'react';
 import { FlightSearch as FlightSearchType, Flight } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { flightScraperManager } from '@/lib/flight-scraper-manager';
 
 const CITIES = [
   { code: 'LGW', name: 'London Gatwick' },
@@ -21,6 +22,12 @@ const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'GBP' },
 ];
 
+// Real conversion rates (approximate)
+const CONVERSION_RATES = {
+  EUR: 1,
+  GBP: 1.18, // 1 EUR = 1.18 GBP (approx)
+};
+
 export default function FlightSearch() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -31,11 +38,19 @@ export default function FlightSearch() {
     returnDate: '',
     maxPrice: '',
   });
-  const [selectedCurrency, setSelectedCurrency] = useState('EUR');
+  const [searchCurrency, setSearchCurrency] = useState('EUR'); // Currency for search/max price
+  const [trackingCurrency, setTrackingCurrency] = useState('EUR'); // Currency for target price only
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [trackingPrice, setTrackingPrice] = useState<number>(0);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Get default date (2 months from now)
+  const getDefaultDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 2);
+    return date.toISOString().split('T')[0];
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,16 +58,23 @@ export default function FlightSearch() {
     setHasSearched(true);
 
     try {
+      // Use the departure date from search params, or default to 2 months from now
+      const searchDate = searchParams.departureDate || getDefaultDate();
+      
       const response = await fetch(
-        `/api/flights/search?origin=${searchParams.origin}&destination=${searchParams.destination}`
+        `/api/flights/search?origin=${searchParams.origin}&destination=${searchParams.destination}&date=${searchDate}`
       );
       const data = await response.json();
       
-      // Filter by max price if set
+      // Filter by max price if set (convert max price to EUR for comparison)
       let filteredFlights = data.flights || [];
       if (searchParams.maxPrice) {
+        const maxPriceInEUR = searchCurrency === 'GBP' 
+          ? Number(searchParams.maxPrice) / CONVERSION_RATES.GBP
+          : Number(searchParams.maxPrice);
+        
         filteredFlights = filteredFlights.filter((flight: Flight) => 
-          flight.price <= Number(searchParams.maxPrice)
+          flight.price <= maxPriceInEUR
         );
       }
       
@@ -85,34 +107,52 @@ export default function FlightSearch() {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      // FIX: Get token from localStorage safely
+      let token;
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('token');
+      }
+
+      if (!token) {
+        addToast({
+          type: 'error',
+          title: 'Authentication Error',
+          message: 'Please log in again'
+        });
+        return;
+      }
+
+      console.log('Sending tracking request with token:', token ? 'Token exists' : 'No token');
+
       const response = await fetch('/api/flights/track', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           origin: flight.origin,
           destination: flight.destination,
           targetPrice: trackingPrice,
-          currency: selectedCurrency,
+          currency: trackingCurrency,
         }),
       });
+
+      const responseData = await response.json();
 
       if (response.ok) {
         addToast({
           type: 'success',
           title: 'Tracking Started!',
-          message: `Now tracking ${flight.origin} → ${flight.destination} below ${selectedCurrency}${trackingPrice}`
+          message: `Now tracking ${flight.origin} → ${flight.destination} below ${getTrackingCurrencySymbol()}${trackingPrice}`
         });
         setTrackingPrice(0);
       } else {
-        const error = await response.json();
+        console.log('Tracking failed response:', responseData);
         addToast({
           type: 'error',
           title: 'Tracking Failed',
-          message: error.error || 'Unable to track this flight'
+          message: responseData.error || 'Unable to track this flight'
         });
       }
     } catch (error) {
@@ -130,14 +170,31 @@ export default function FlightSearch() {
     setFlights([]);
   };
 
-  const getCurrencySymbol = () => {
-    return CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '€';
+  const getSearchCurrencySymbol = () => {
+    return CURRENCIES.find(c => c.code === searchCurrency)?.symbol || '€';
+  };
+
+  const getTrackingCurrencySymbol = () => {
+    return CURRENCIES.find(c => c.code === trackingCurrency)?.symbol || '€';
+  };
+
+  // Convert flight price to selected search currency for display
+  const getDisplayPrice = (flight: Flight) => {
+    if (searchCurrency === 'GBP') {
+      return (flight.price * CONVERSION_RATES.GBP).toFixed(0);
+    }
+    return flight.price.toFixed(0);
+  };
+
+  // Check if this is a real booking link (not placeholder)
+  const isRealBookingLink = (bookingUrl: string | undefined): boolean => {
+    return !!bookingUrl && !bookingUrl.includes('example.com');
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      {/* Search Form - Always visible */}
-      <div className={`nav-bar rounded-xl shadow-xl p-8 mb-6 ${hasSearched ? 'sticky top-4 z-10' : ''}`}>
+      {/* Search Form - FIXED: Removed sticky class */}
+      <div className="nav-bar rounded-xl shadow-xl p-8 mb-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest">
             FIND YOUR PERFECT FLIGHT
@@ -209,6 +266,7 @@ export default function FlightSearch() {
                 className="roman-input w-full dark:bg-black dark:text-white"
                 required
                 onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                min={getDefaultDate()}
               />
             </div>
 
@@ -224,6 +282,7 @@ export default function FlightSearch() {
                 }
                 className="roman-input w-full dark:bg-black dark:text-white"
                 onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                min={searchParams.departureDate || getDefaultDate()}
               />
             </div>
           </div>
@@ -235,8 +294,8 @@ export default function FlightSearch() {
               </label>
               <div className="flex space-x-3">
                 <select
-                  value={selectedCurrency}
-                  onChange={(e) => setSelectedCurrency(e.target.value)}
+                  value={searchCurrency}
+                  onChange={(e) => setSearchCurrency(e.target.value)}
                   className="roman-input !w-32"
                 >
                   {CURRENCIES.map((currency) => (
@@ -331,72 +390,94 @@ export default function FlightSearch() {
               
               <div className="p-6 max-h-96 overflow-y-auto">
                 <div className="space-y-6">
-                  {flights.map((flight) => (
-                    <div
-                      key={flight.id}
-                      className="flight-card flex flex-col md:flex-row md:items-center justify-between p-6 rounded-xl shadow-lg"
-                    >
-                      <div className="flex-1 mb-4 md:mb-0">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-amber-100 dark:bg-orange-100 rounded-full flex items-center justify-center border-2 border-amber-500 dark:border-orange-400">
-                            <span className="text-amber-700 dark:text-orange-600 font-bold text-sm">
-                              {flight.airline.substring(0, 2)}
-                            </span>
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-gray-900 dark:text-white roman-body text-lg">
-                              {flight.airline} - {flight.flightNumber}
-                            </h3>
-                            <p className="text-sm text-amber-700 dark:text-orange-400">
-                              {flight.origin} → {flight.destination}
-                            </p>
-                            <p className="text-sm text-amber-600 dark:text-orange-300">
-                              {new Date(flight.departure).toLocaleDateString()} • {new Date(flight.departure).toLocaleTimeString()}
-                            </p>
+                  {flights.map((flight) => {
+                    const airlineLogo = flightScraperManager.getAirlineLogo(flight.airline);
+                    const airlineColor = flightScraperManager.getAirlineColor(flight.airline);
+                    
+                    return (
+                      <div
+                        key={flight.id}
+                        className="flight-card flex flex-col md:flex-row md:items-center justify-between p-6 rounded-xl shadow-lg"
+                      >
+                        <div className="flex-1 mb-4 md:mb-0">
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${airlineColor} bg-opacity-10`}>
+                              <span className={`font-bold text-sm ${airlineColor}`}>
+                                {airlineLogo}
+                              </span>
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-gray-900 dark:text-white roman-body text-lg">
+                                <span className={airlineColor}>{flight.airline}</span> - {flight.flightNumber}
+                              </h3>
+                              <p className="text-sm text-amber-700 dark:text-orange-400">
+                                {flight.origin} → {flight.destination}
+                              </p>
+                              <p className="text-sm text-amber-600 dark:text-orange-300">
+                                {new Date(flight.departure).toLocaleDateString()} • {new Date(flight.departure).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </p>
+                              {/* Show real booking indicator */}
+                              {isRealBookingLink(flight.bookingUrl) && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                  🛒 Real {flight.airline} booking available
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="text-right mb-4 md:mb-0">
-                        <p className="text-3xl font-bold text-amber-800 dark:text-orange-500">
-                          {getCurrencySymbol()}{flight.price}
-                        </p>
-                        <p className="text-sm text-amber-600 dark:text-orange-400">{selectedCurrency}</p>
-                      </div>
-
-                      {user && (
-                        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                          <div className="flex space-x-2">
-                            <select
-                              value={selectedCurrency}
-                              onChange={(e) => setSelectedCurrency(e.target.value)}
-                              className="roman-input !w-24"
+                        <div className="text-right mb-4 md:mb-0">
+                          <p className="text-3xl font-bold text-amber-800 dark:text-orange-500">
+                            {getSearchCurrencySymbol()}{getDisplayPrice(flight)}
+                          </p>
+                          <p className="text-sm text-amber-600 dark:text-orange-400">{searchCurrency}</p>
+                          {/* Real booking button */}
+                          {isRealBookingLink(flight.bookingUrl) && (
+                            <a
+                              href={flight.bookingUrl!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block mt-2 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
                             >
-                              {CURRENCIES.map((currency) => (
-                                <option key={currency.code} value={currency.code}>
-                                  {currency.symbol} {currency.name}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="number"
-                              placeholder="Target price"
-                              value={trackingPrice || ''}
-                              onChange={(e) => setTrackingPrice(Number(e.target.value))}
-                              className="roman-input w-32"
-                              min="0"
-                            />
-                          </div>
-                          <button
-                            onClick={() => handleTrackFlight(flight)}
-                            className="search-button text-lg py-2 px-6"
-                          >
-                            Track
-                          </button>
+                              Book on {flight.airline}
+                            </a>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {user && (
+                          <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                            <div className="flex space-x-2">
+                              <select
+                                value={trackingCurrency}
+                                onChange={(e) => setTrackingCurrency(e.target.value)}
+                                className="roman-input !w-24"
+                              >
+                                {CURRENCIES.map((currency) => (
+                                  <option key={currency.code} value={currency.code}>
+                                    {currency.symbol} {currency.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                placeholder="Target price"
+                                value={trackingPrice || ''}
+                                onChange={(e) => setTrackingPrice(Number(e.target.value))}
+                                className="roman-input w-32"
+                                min="0"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleTrackFlight(flight)}
+                              className="search-button text-lg py-2 px-6"
+                            >
+                              Track
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

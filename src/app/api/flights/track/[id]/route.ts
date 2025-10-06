@@ -5,66 +5,68 @@ import { verifyToken } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
-export async function DELETE(
+export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
     
     if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    const flightId = params.id;
-
-    if (!flightId) {
-      return NextResponse.json(
-        { error: 'Flight ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify the tracked flight belongs to the user and deactivate it
-    const trackedFlight = await prisma.trackedFlight.updateMany({
+    const trackedFlight = await prisma.trackedFlight.findFirst({
       where: {
-        id: flightId,
+        id: params.id,
         userId: decoded.userId,
+        isActive: true,
       },
-      data: {
-        isActive: false,
-        updatedAt: new Date(),
+      include: {
+        priceUpdates: {
+          orderBy: { recordedAt: 'desc' },
+        },
+        notifications: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
-    if (trackedFlight.count === 0) {
-      return NextResponse.json(
-        { error: 'Tracked flight not found or access denied' },
-        { status: 404 }
-      );
+    if (!trackedFlight) {
+      return NextResponse.json({ error: 'Tracked flight not found' }, { status: 404 });
     }
+
+    // Calculate current price (latest price update)
+    const currentPrice = trackedFlight.priceUpdates[0]?.price 
+      ? Number(trackedFlight.priceUpdates[0].price)
+      : Number(trackedFlight.targetPrice) * 1.2; // Default if no updates
+
+    // Calculate lowest price
+    const lowestPrice = trackedFlight.priceUpdates.length > 0
+      ? Math.min(...trackedFlight.priceUpdates.map(update => Number(update.price)))
+      : Number(trackedFlight.targetPrice) * 0.8;
+
+    // Calculate highest price  
+    const highestPrice = trackedFlight.priceUpdates.length > 0
+      ? Math.max(...trackedFlight.priceUpdates.map(update => Number(update.price)))
+      : Number(trackedFlight.targetPrice) * 1.5;
 
     return NextResponse.json({
-      message: 'Tracking stopped successfully',
+      trackedFlight: {
+        ...trackedFlight,
+        currentPrice,
+        lowestPrice,
+        highestPrice,
+      },
     });
   } catch (error) {
-    console.error('Stop tracking error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Get tracked flight error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
