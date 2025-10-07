@@ -1,4 +1,4 @@
-// src/components/FlightSearch.tsx - COMPLETE FIXED VERSION
+// src/components/FlightSearch.tsx - COMPLETE UPDATED VERSION
 'use client';
 
 import { useState } from 'react';
@@ -107,7 +107,6 @@ export default function FlightSearch() {
     }
 
     try {
-      // FIX: Get token from localStorage safely
       let token;
       if (typeof window !== 'undefined') {
         token = localStorage.getItem('token');
@@ -122,8 +121,13 @@ export default function FlightSearch() {
         return;
       }
 
-      console.log('Sending tracking request with token:', token ? 'Token exists' : 'No token');
+      console.log('Sending SPECIFIC flight tracking request:', {
+        flightNumber: flight.flightNumber,
+        airline: flight.airline,
+        departureTime: flight.departure
+      });
 
+      // UPDATED: Send specific flight data instead of just route
       const response = await fetch('/api/flights/track', {
         method: 'POST',
         headers: {
@@ -131,10 +135,17 @@ export default function FlightSearch() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          // Specific flight data
           origin: flight.origin,
           destination: flight.destination,
+          flightNumber: flight.flightNumber,
+          airline: flight.airline,
+          departureDate: flight.departure.toISOString().split('T')[0],
+          departureTime: flight.departure.toTimeString().split(' ')[0].substring(0, 5), // "HH:MM" format
+          currentPrice: flight.price, // Actual current price
           targetPrice: trackingPrice,
           currency: trackingCurrency,
+          bookingUrl: flight.bookingUrl, // Store the actual booking URL
         }),
       });
 
@@ -143,8 +154,8 @@ export default function FlightSearch() {
       if (response.ok) {
         addToast({
           type: 'success',
-          title: 'Tracking Started!',
-          message: `Now tracking ${flight.origin} → ${flight.destination} below ${getTrackingCurrencySymbol()}${trackingPrice}`
+          title: 'Flight Tracking Started!',
+          message: `Now tracking ${flight.airline} ${flight.flightNumber} on ${flight.departure.toLocaleDateString()}`
         });
         setTrackingPrice(0);
       } else {

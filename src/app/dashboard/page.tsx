@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx - NO CURRENCY COMPLEXITY
+// src/app/dashboard/page.tsx - COMPLETE UPDATED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { flightScraperManager } from '@/lib/flight-scraper-manager';
 
 interface TrackedFlight {
   id: string;
@@ -14,6 +15,7 @@ interface TrackedFlight {
   targetPrice: number;
   currentPrice: number;
   lowestPrice: number;
+  highestPrice: number;
   isRoundTrip: boolean;
   dateRangeStart?: Date;
   dateRangeEnd?: Date;
@@ -24,10 +26,18 @@ interface TrackedFlight {
   isActive: boolean;
   createdAt: Date;
   priceUpdates: Array<{
+    id: string;
     price: number;
     currency: string;
     recordedAt: Date;
+    airline?: string;
+    flightNumber?: string;
   }>;
+  specificFlightDetails?: {
+    flightNumber?: string;
+    airline?: string;
+    departureTime?: Date;
+  };
   _count: {
     notifications: number;
   };
@@ -123,7 +133,7 @@ export default function Dashboard() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched tracked flights:', data.trackedFlights);
+        console.log('Fetched tracked flights with specific details:', data.trackedFlights);
         setTrackedFlights(data.trackedFlights || []);
       } else {
         setError('Failed to load tracked flights');
@@ -180,6 +190,42 @@ export default function Dashboard() {
     }
   };
 
+  const handleManualPriceCheck = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/flights/check-prices', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        addToast({
+          type: 'success',
+          title: 'Price Check Complete',
+          message: `Checked ${result.results.length} flights, found ${result.notifications} price changes`
+        });
+        // Refresh the tracked flights to show updated prices
+        fetchTrackedFlights();
+      } else {
+        addToast({
+          type: 'error',
+          title: 'Price Check Failed',
+          message: 'Unable to check prices at this time'
+        });
+      }
+    } catch (error) {
+      console.error('Manual price check error:', error);
+      addToast({
+        type: 'error',
+        title: 'Network Error',
+        message: 'Failed to check prices. Please check your connection.'
+      });
+    }
+  };
+
   const getPriceStatus = (currentPrice: number, targetPrice: number) => {
     if (currentPrice <= targetPrice) {
       return { status: 'below', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900' };
@@ -195,6 +241,13 @@ export default function Dashboard() {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
+    });
+  };
+
+  const formatTime = (date: Date) => {
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -231,12 +284,20 @@ export default function Dashboard() {
               Monitor price changes and get smart alerts
             </p>
           </div>
-          <Link 
-            href="/tracking-setup" 
-            className="search-button mt-4 md:mt-0 text-lg py-3 px-6 inline-block"
-          >
-            + TRACK NEW ROUTE
-          </Link>
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 md:mt-0">
+            <button
+              onClick={handleManualPriceCheck}
+              className="px-4 py-2 border-2 border-amber-500 dark:border-orange-500 text-amber-800 dark:text-orange-400 rounded-lg hover:bg-amber-50 dark:hover:bg-orange-900 transition-colors roman-body font-semibold text-center"
+            >
+              CHECK PRICES NOW
+            </button>
+            <Link 
+              href="/tracking-setup" 
+              className="search-button text-lg py-3 px-6 inline-block text-center"
+            >
+              + TRACK NEW FLIGHT
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -272,12 +333,15 @@ export default function Dashboard() {
               return (
                 <div key={flight.id} className="roman-card p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                    {/* Flight Info */}
+                    {/* Flight Info - ENHANCED WITH SPECIFIC FLIGHT DETAILS */}
                     <div className="flex-1 mb-4 lg:mb-0">
                       <div className="flex items-center space-x-4 mb-3">
                         <div className="w-12 h-12 bg-amber-100 dark:bg-orange-100 rounded-full flex items-center justify-center border-2 border-amber-500 dark:border-orange-400">
                           <span className="text-amber-700 dark:text-orange-600 font-bold text-sm">
-                            {flight.origin}-{flight.destination}
+                            {flight.specificFlightDetails?.airline 
+                              ? flightScraperManager.getAirlineLogo(flight.specificFlightDetails.airline)
+                              : `${flight.origin}-${flight.destination}`
+                            }
                           </span>
                         </div>
                         <div>
@@ -287,13 +351,20 @@ export default function Dashboard() {
                           </h3>
                           <p className="roman-body text-amber-700 dark:text-orange-400">
                             {flight.departureDate ? formatDate(new Date(flight.departureDate)) : 'Flexible dates'}
-                            {flight.airlineFilter && flight.airlineFilter !== 'ANY' && ` • ${flight.airlineFilter}`}
+                            {flight.specificFlightDetails?.flightNumber && ` • ${flight.specificFlightDetails.flightNumber}`}
+                            {flight.specificFlightDetails?.departureTime && ` • ${formatTime(new Date(flight.specificFlightDetails.departureTime))}`}
+                            {flight.airlineFilter && flight.airlineFilter !== 'ANY' && !flight.specificFlightDetails?.airline && ` • ${flight.airlineFilter}`}
                           </p>
+                          {flight.specificFlightDetails?.airline && (
+                            <p className="text-sm text-amber-600 dark:text-orange-400 mt-1">
+                              {flight.specificFlightDetails.airline} • Tracked since {formatDate(new Date(flight.createdAt))}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Price Info - SIMPLIFIED: Hardcoded € symbol */}
+                    {/* Price Info */}
                     <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-start xl:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-0 lg:space-y-2 xl:space-y-0 xl:space-x-4 mb-4 lg:mb-0">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-amber-800 dark:text-orange-500">
@@ -357,26 +428,26 @@ export default function Dashboard() {
                     <div className="mt-4 pt-4 border-t-2 border-amber-200 dark:border-orange-800">
                       <div className="flex justify-between items-center mb-2">
                         <span className="roman-body text-amber-700 dark:text-orange-400 font-semibold">
-                          PRICE HISTORY
+                          PRICE HISTORY ({flight.priceUpdates.length} updates)
                         </span>
                         <span className="text-sm roman-body text-amber-600 dark:text-orange-300">
-                          Lowest: €{flight.lowestPrice}
+                          Lowest: €{flight.lowestPrice} • Highest: €{flight.highestPrice}
                         </span>
                       </div>
                       <div className="flex items-end h-8 space-x-1">
-                        {flight.priceUpdates.slice(0, 10).map((update, index) => {
-                          const maxPrice = Math.max(...flight.priceUpdates.map(u => u.price));
-                          const minPrice = Math.min(...flight.priceUpdates.map(u => u.price));
+                        {flight.priceUpdates.slice(-10).map((update, index) => {
+                          const maxPrice = flight.highestPrice;
+                          const minPrice = flight.lowestPrice;
                           const priceRange = maxPrice - minPrice;
                           const height = priceRange > 0 ? ((update.price - minPrice) / priceRange) * 100 : 50;
                           
                           return (
                             <div
-                              key={index}
+                              key={update.id}
                               className={`flex-1 rounded-t ${
                                 update.price <= flight.targetPrice 
                                   ? 'bg-green-500' 
-                                  : update.price === flight.currentPrice
+                                  : Math.abs(update.price - flight.currentPrice) < 0.01
                                   ? 'bg-amber-500 dark:bg-orange-500'
                                   : 'bg-amber-300 dark:bg-orange-700'
                               }`}

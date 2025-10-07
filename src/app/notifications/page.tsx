@@ -1,4 +1,4 @@
-// src/app/notifications/page.tsx
+// src/app/notifications/page.tsx - COMPLETE UPDATED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,15 +11,18 @@ interface Notification {
   userId: string;
   trackedFlightId: string;
   message: string;
-  type: 'price_drop' | 'price_rise' | 'alert' | 'info';
+  type: 'price_drop' | 'price_rise' | 'price_drop_below_target' | 'price_rise_after_drop' | 'alert' | 'info';
   isRead: boolean;
   sentViaEmail: boolean;
   sentViaInApp: boolean;
   metadata?: {
     oldPrice?: number;
     newPrice?: number;
+    targetPrice?: number;
+    priceDrop?: number;
+    priceDropPercent?: number;
+    bookingUrl?: string;
     currency?: string;
-    flightId?: string;
   };
   createdAt: Date;
   trackedFlight?: {
@@ -43,102 +46,97 @@ export default function Notifications() {
     }
   }, [user]);
 
-  // Mock data - replace with actual API call
   const fetchNotifications = async () => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          userId: '1',
-          trackedFlightId: '1',
-          message: 'Price dropped to €75! 20% below your target of €95. Time to book your flight!',
-          type: 'price_drop',
-          isRead: false,
-          sentViaEmail: true,
-          sentViaInApp: true,
-          metadata: { oldPrice: 95, newPrice: 75, currency: 'EUR' },
-          createdAt: new Date('2024-01-21T14:30:00'),
-          trackedFlight: { id: '1', origin: 'STN', destination: 'VLC', targetPrice: 95 }
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/notifications', {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: '2',
-          userId: '1',
-          trackedFlightId: '1',
-          message: 'Price increased to €105. The deal is gone!',
-          type: 'price_rise',
-          isRead: false,
-          sentViaEmail: true,
-          sentViaInApp: true,
-          metadata: { oldPrice: 75, newPrice: 105, currency: 'EUR' },
-          createdAt: new Date('2024-01-21T16:45:00'),
-          trackedFlight: { id: '1', origin: 'STN', destination: 'VLC', targetPrice: 95 }
-        },
-        {
-          id: '3',
-          userId: '1',
-          trackedFlightId: '2',
-          message: 'New flight found from London Gatwick to Valencia for €82',
-          type: 'price_drop',
-          isRead: true,
-          sentViaEmail: false,
-          sentViaInApp: true,
-          metadata: { newPrice: 82, currency: 'EUR' },
-          createdAt: new Date('2024-01-20T09:15:00'),
-          trackedFlight: { id: '2', origin: 'LGW', destination: 'VLC', targetPrice: 90 }
-        },
-        {
-          id: '4',
-          userId: '1',
-          trackedFlightId: '3',
-          message: 'Tracking started for London Stansted to Tirana',
-          type: 'info',
-          isRead: true,
-          sentViaEmail: false,
-          sentViaInApp: true,
-          createdAt: new Date('2024-01-19T11:20:00'),
-          trackedFlight: { id: '3', origin: 'STN', destination: 'TIA', targetPrice: 120 }
-        }
-      ];
+      });
 
-      setNotifications(mockNotifications);
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      } else {
+        console.error('Failed to fetch notifications');
+        // Fallback to empty array
+        setNotifications([]);
+      }
     } catch (error) {
       console.error('Fetch notifications error:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   };
 
   const markAsRead = async (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId ? { ...notif, isRead: true } : notif
-      )
-    );
-    
-    // TODO: API call to mark as read
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId ? { ...notif, isRead: true } : notif
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Mark as read error:', error);
+    }
   };
 
   const markAllAsRead = async () => {
-    setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })));
-    setShowMarkAllConfirm(false);
-    
-    // TODO: API call to mark all as read
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/notifications/read-all', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })));
+        setShowMarkAllConfirm(false);
+      }
+    } catch (error) {
+      console.error('Mark all as read error:', error);
+    }
   };
 
   const deleteNotification = async (notificationId: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
-    
-    // TODO: API call to delete notification
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
+      }
+    } catch (error) {
+      console.error('Delete notification error:', error);
+    }
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'price_drop':
+      case 'price_drop_below_target':
         return <TrendingDown className="h-6 w-6 text-green-500" />;
       case 'price_rise':
+      case 'price_rise_after_drop':
         return <TrendingUp className="h-6 w-6 text-red-500" />;
       case 'alert':
         return <Bell className="h-6 w-6 text-amber-500" />;
@@ -150,8 +148,10 @@ export default function Notifications() {
   const getNotificationColor = (type: string) => {
     switch (type) {
       case 'price_drop':
+      case 'price_drop_below_target':
         return 'border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20';
       case 'price_rise':
+      case 'price_rise_after_drop':
         return 'border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/20';
       case 'alert':
         return 'border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/20';
@@ -345,6 +345,26 @@ export default function Notifications() {
                       <p className="roman-body text-amber-800 dark:text-orange-500 mb-2">
                         {notification.message}
                       </p>
+
+                      {/* Price change details */}
+                      {notification.metadata && (
+                        <div className="flex items-center space-x-4 text-sm text-amber-600 dark:text-orange-400 mb-2">
+                          {notification.metadata.oldPrice && notification.metadata.newPrice && (
+                            <span>
+                              <span className="line-through">€{notification.metadata.oldPrice}</span> → 
+                              <span className="font-semibold"> €{notification.metadata.newPrice}</span>
+                            </span>
+                          )}
+                          {notification.metadata.priceDropPercent && (
+                            <span className={`font-semibold ${
+                              notification.type.includes('drop') ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {notification.metadata.priceDropPercent > 0 ? '↓' : '↑'}
+                              {Math.abs(notification.metadata.priceDropPercent).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="flex items-center space-x-4 text-sm text-amber-600 dark:text-orange-400">
                         <span>{new Date(notification.createdAt).toLocaleDateString()} • {new Date(notification.createdAt).toLocaleTimeString()}</span>
