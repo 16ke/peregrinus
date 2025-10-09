@@ -1,4 +1,4 @@
-// src/lib/flight-scraper-manager.ts
+// src/lib/flight-scraper-manager.ts - COMPLETE UPDATED VERSION
 import { ryanairScraper, RyanairFlight } from './ryanair-scraper';
 import { easyJetScraper, EasyJetFlight } from './easyjet-scraper';
 import { wizzAirScraper, WizzAirFlight } from './wizzair-scraper';
@@ -9,13 +9,23 @@ export class FlightScraperManager {
   private airlineRoutes = {
     RYANAIR: [
       { from: 'STN', to: 'VLC' },
+      { from: 'STN', to: 'VCE' },
+      { from: 'STN', to: 'TSF' },
+      { from: 'VLC', to: 'STN' },
+      { from: 'VCE', to: 'STN' },
+      { from: 'TSF', to: 'STN' },
     ],
     EASYJET: [
       { from: 'LGW', to: 'VLC' },
+      { from: 'LGW', to: 'VCE' },
+      { from: 'VLC', to: 'LGW' },
+      { from: 'VCE', to: 'LGW' },
     ],
     WIZZAIR: [
       { from: 'LGW', to: 'TIA' },
       { from: 'STN', to: 'TIA' },
+      { from: 'TIA', to: 'LGW' },
+      { from: 'TIA', to: 'STN' },
     ],
   };
 

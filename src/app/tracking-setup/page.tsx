@@ -1,4 +1,4 @@
-// src/app/tracking-setup/page.tsx - NO BULLSHIT VERSION
+// src/app/tracking-setup/page.tsx - CLEAN VERSION WITH ONLY PASSENGER SELECTION
 'use client';
 
 import { useState } from 'react';
@@ -41,10 +41,15 @@ export default function TrackingSetup() {
     targetPrice: '',
     emailNotifications: true,
     inAppNotifications: true,
+    // Passenger information ONLY
+    adults: 1,
+    children: 0,
+    infants: 0,
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassengerPopup, setShowPassengerPopup] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +104,10 @@ export default function TrackingSetup() {
           returnDate: formData.returnDate || undefined,
           airlineFilter: formData.airlineFilter === 'ANY' ? undefined : formData.airlineFilter,
           maxStops: formData.maxStops,
+          // Passenger information ONLY - for booking URLs
+          adults: formData.adults,
+          children: formData.children,
+          infants: formData.infants,
         }),
       });
 
@@ -106,7 +115,7 @@ export default function TrackingSetup() {
         addToast({
           type: 'success',
           title: 'Tracking Started!',
-          message: `Now tracking ${formData.origin} → ${formData.destination} for flights below €${formData.targetPrice}`
+          message: `Now tracking ${formData.origin} → ${formData.destination} for ${getPassengerSummary()} below €${formData.targetPrice}`
         });
         router.push('/dashboard');
       } else {
@@ -136,6 +145,33 @@ export default function TrackingSetup() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const updatePassengerCount = (type: 'adults' | 'children' | 'infants', delta: number) => {
+    setFormData(prev => {
+      const current = prev[type] || 0;
+      const newValue = Math.max(0, current + delta);
+      
+      // Ensure at least 1 adult
+      if (type === 'adults' && newValue < 1) return prev;
+      
+      return {
+        ...prev,
+        [type]: newValue
+      };
+    });
+  };
+
+  const getPassengerSummary = () => {
+    const parts = [];
+    if (formData.adults) parts.push(`${formData.adults} Adult${formData.adults !== 1 ? 's' : ''}`);
+    if (formData.children) parts.push(`${formData.children} Child${formData.children !== 1 ? 'ren' : ''}`);
+    if (formData.infants) parts.push(`${formData.infants} Infant${formData.infants !== 1 ? 's' : ''}`);
+    return parts.join(', ');
+  };
+
+  const getTotalPassengers = () => {
+    return formData.adults + formData.children + formData.infants;
   };
 
   if (!user) {
@@ -275,6 +311,118 @@ export default function TrackingSetup() {
             </div>
           </div>
 
+          {/* Passenger Section ONLY - No Currency */}
+          <div className="roman-card p-6">
+            <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
+              PASSENGERS
+            </h2>
+            
+            <div>
+              <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
+                PASSENGERS
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPassengerPopup(!showPassengerPopup)}
+                  className="roman-input w-full text-left flex justify-between items-center"
+                >
+                  <span>{getPassengerSummary()}</span>
+                  <span>▼</span>
+                </button>
+
+                {showPassengerPopup && (
+                  <div className="absolute z-10 mt-1 w-full nav-bar rounded-xl shadow-xl p-4 border-2 border-amber-300 dark:border-orange-700">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Adults</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">16+ years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('adults', -1)}
+                            disabled={formData.adults === 1}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{formData.adults}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('adults', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Children</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">2-15 years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('children', -1)}
+                            disabled={formData.children === 0}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{formData.children}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('children', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Infants</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">Under 2 years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('infants', -1)}
+                            disabled={formData.infants === 0}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{formData.infants}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('infants', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassengerPopup(false)}
+                        className="w-full search-button py-2"
+                      >
+                        DONE
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
@@ -317,7 +465,7 @@ export default function TrackingSetup() {
             </div>
           </div>
 
-          {/* Price & Notifications - SIMPLIFIED: No currency selection */}
+          {/* Price & Notifications */}
           <div className="roman-card p-6">
             <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-4 tracking-widest">
               PRICE ALERTS
@@ -338,7 +486,7 @@ export default function TrackingSetup() {
                 required
               />
               <p className="text-sm text-amber-600 dark:text-orange-400 mt-2">
-                We'll notify you when flight prices drop below €{formData.targetPrice}
+                We'll notify you when flight prices drop below €{formData.targetPrice} for {getPassengerSummary()}
               </p>
             </div>
 

@@ -1,5 +1,4 @@
-// src/types/index.ts
-
+// src/types/index.ts - UPDATED VERSION
 export interface User {
   id: string;
   email: string;
@@ -24,6 +23,10 @@ export interface FlightSearch {
   departureDate: string;
   returnDate?: string;
   maxPrice?: string;
+  // Passenger information
+  adults?: number;
+  children?: number;
+  infants?: number;
   // New advanced filters
   dateRangeStart?: string;
   dateRangeEnd?: string;
@@ -69,6 +72,10 @@ export interface TrackedFlight {
   maxStops?: number;
   bookingUrl?: string;
   isActive: boolean;
+  // Passenger information for booking
+  adults?: number;
+  children?: number;
+  infants?: number;
   // Smart notification tracking
   lastNotifiedPrice?: number;
   lastNotificationType?: 'price_drop' | 'price_rise';
@@ -110,6 +117,10 @@ export interface TrackFlightRequest {
   destination: string;
   targetPrice: number;
   currency: string;
+  // Passenger information
+  adults?: number;
+  children?: number;
+  infants?: number;
   // Enhanced options
   departureDate?: string;
   returnDate?: string;
@@ -125,4 +136,11 @@ export interface TrackFlightRequest {
 export interface NotificationPreferences {
   emailNotifications: boolean;
   inAppNotifications: boolean;
+}
+
+// Passenger information interface
+export interface PassengerInfo {
+  adults: number;
+  children: number;
+  infants: number;
 }

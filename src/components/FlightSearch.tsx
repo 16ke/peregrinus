@@ -1,4 +1,4 @@
-// src/components/FlightSearch.tsx - COMPLETE UPDATED VERSION
+// src/components/FlightSearch.tsx - COMPLETE UPDATED VERSION WITH PASSENGERS & REAL BOOKING URLS
 'use client';
 
 import { useState } from 'react';
@@ -37,13 +37,17 @@ export default function FlightSearch() {
     departureDate: '',
     returnDate: '',
     maxPrice: '',
+    adults: 1,
+    children: 0,
+    infants: 0,
   });
-  const [searchCurrency, setSearchCurrency] = useState('EUR'); // Currency for search/max price
-  const [trackingCurrency, setTrackingCurrency] = useState('EUR'); // Currency for target price only
+  const [searchCurrency, setSearchCurrency] = useState('EUR');
+  const [trackingCurrency, setTrackingCurrency] = useState('EUR');
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [trackingPrice, setTrackingPrice] = useState<number>(0);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showPassengerPopup, setShowPassengerPopup] = useState(false);
 
   // Get default date (2 months from now)
   const getDefaultDate = () => {
@@ -58,7 +62,6 @@ export default function FlightSearch() {
     setHasSearched(true);
 
     try {
-      // Use the departure date from search params, or default to 2 months from now
       const searchDate = searchParams.departureDate || getDefaultDate();
       
       const response = await fetch(
@@ -124,10 +127,12 @@ export default function FlightSearch() {
       console.log('Sending SPECIFIC flight tracking request:', {
         flightNumber: flight.flightNumber,
         airline: flight.airline,
-        departureTime: flight.departure
+        departureTime: flight.departure,
+        adults: searchParams.adults,
+        children: searchParams.children,
+        infants: searchParams.infants
       });
 
-      // UPDATED: Send specific flight data instead of just route
       const response = await fetch('/api/flights/track', {
         method: 'POST',
         headers: {
@@ -135,17 +140,21 @@ export default function FlightSearch() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          // Specific flight data
           origin: flight.origin,
           destination: flight.destination,
           flightNumber: flight.flightNumber,
           airline: flight.airline,
           departureDate: flight.departure.toISOString().split('T')[0],
-          departureTime: flight.departure.toTimeString().split(' ')[0].substring(0, 5), // "HH:MM" format
-          currentPrice: flight.price, // Actual current price
+          departureTime: flight.departure.toTimeString().split(' ')[0].substring(0, 5),
+          currentPrice: flight.price,
           targetPrice: trackingPrice,
           currency: trackingCurrency,
-          bookingUrl: flight.bookingUrl, // Store the actual booking URL
+          bookingUrl: flight.bookingUrl,
+          adults: searchParams.adults,
+          children: searchParams.children,
+          infants: searchParams.infants,
+          isRoundTrip: !!searchParams.returnDate,
+          returnDate: searchParams.returnDate,
         }),
       });
 
@@ -181,6 +190,33 @@ export default function FlightSearch() {
     setFlights([]);
   };
 
+  const updatePassengerCount = (type: 'adults' | 'children' | 'infants', delta: number) => {
+    setSearchParams(prev => {
+      const current = prev[type] || 0;
+      const newValue = Math.max(0, current + delta);
+      
+      // Ensure at least 1 adult
+      if (type === 'adults' && newValue < 1) return prev;
+      
+      return {
+        ...prev,
+        [type]: newValue
+      };
+    });
+  };
+
+  const getTotalPassengers = () => {
+    return (searchParams.adults || 0) + (searchParams.children || 0) + (searchParams.infants || 0);
+  };
+
+  const getPassengerSummary = () => {
+    const parts = [];
+    if (searchParams.adults) parts.push(`${searchParams.adults} Adult${searchParams.adults !== 1 ? 's' : ''}`);
+    if (searchParams.children) parts.push(`${searchParams.children} Child${searchParams.children !== 1 ? 'ren' : ''}`);
+    if (searchParams.infants) parts.push(`${searchParams.infants} Infant${searchParams.infants !== 1 ? 's' : ''}`);
+    return parts.join(', ');
+  };
+
   const getSearchCurrencySymbol = () => {
     return CURRENCIES.find(c => c.code === searchCurrency)?.symbol || '€';
   };
@@ -189,7 +225,6 @@ export default function FlightSearch() {
     return CURRENCIES.find(c => c.code === trackingCurrency)?.symbol || '€';
   };
 
-  // Convert flight price to selected search currency for display
   const getDisplayPrice = (flight: Flight) => {
     if (searchCurrency === 'GBP') {
       return (flight.price * CONVERSION_RATES.GBP).toFixed(0);
@@ -197,14 +232,13 @@ export default function FlightSearch() {
     return flight.price.toFixed(0);
   };
 
-  // Check if this is a real booking link (not placeholder)
   const isRealBookingLink = (bookingUrl: string | undefined): boolean => {
     return !!bookingUrl && !bookingUrl.includes('example.com');
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      {/* Search Form - FIXED: Removed sticky class */}
+      {/* Search Form */}
       <div className="nav-bar rounded-xl shadow-xl p-8 mb-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest">
@@ -299,7 +333,112 @@ export default function FlightSearch() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-2">
+            <div>
+              <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
+                PASSENGERS
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPassengerPopup(!showPassengerPopup)}
+                  className="roman-input w-full text-left flex justify-between items-center"
+                >
+                  <span>{getPassengerSummary()}</span>
+                  <span>▼</span>
+                </button>
+
+                {showPassengerPopup && (
+                  <div className="absolute z-10 mt-1 w-full nav-bar rounded-xl shadow-xl p-4 border-2 border-amber-300 dark:border-orange-700">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Adults</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">16+ years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('adults', -1)}
+                            disabled={searchParams.adults === 1}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.adults}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('adults', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Children</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">2-15 years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('children', -1)}
+                            disabled={searchParams.children === 0}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.children}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('children', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="roman-body font-semibold text-amber-800 dark:text-orange-500">Infants</div>
+                          <div className="text-sm text-amber-600 dark:text-orange-400">Under 2 years</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('infants', -1)}
+                            disabled={searchParams.infants === 0}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            -
+                          </button>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.infants}</span>
+                          <button
+                            type="button"
+                            onClick={() => updatePassengerCount('infants', 1)}
+                            className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassengerPopup(false)}
+                        className="w-full search-button py-2"
+                      >
+                        DONE
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
               <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
                 MAX PRICE
               </label>
@@ -317,7 +456,7 @@ export default function FlightSearch() {
                 </select>
                 <input
                   type="number"
-                  placeholder="Enter maximum price"
+                  placeholder="Max price"
                   value={searchParams.maxPrice || ''}
                   onChange={(e) =>
                     setSearchParams({ ...searchParams, maxPrice: e.target.value })
@@ -394,7 +533,7 @@ export default function FlightSearch() {
                     AVAILABLE FLIGHTS
                   </h2>
                   <div className="roman-body text-amber-700 dark:text-orange-400 mt-2 sm:mt-0">
-                    Found {flights.length} flight{flights.length !== 1 ? 's' : ''}
+                    Found {flights.length} flight{flights.length !== 1 ? 's' : ''} for {getPassengerSummary()}
                   </div>
                 </div>
               </div>
@@ -427,7 +566,6 @@ export default function FlightSearch() {
                               <p className="text-sm text-amber-600 dark:text-orange-300">
                                 {new Date(flight.departure).toLocaleDateString()} • {new Date(flight.departure).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </p>
-                              {/* Show real booking indicator */}
                               {isRealBookingLink(flight.bookingUrl) && (
                                 <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                                   🛒 Real {flight.airline} booking available
@@ -442,7 +580,6 @@ export default function FlightSearch() {
                             {getSearchCurrencySymbol()}{getDisplayPrice(flight)}
                           </p>
                           <p className="text-sm text-amber-600 dark:text-orange-400">{searchCurrency}</p>
-                          {/* Real booking button */}
                           {isRealBookingLink(flight.bookingUrl) && (
                             <a
                               href={flight.bookingUrl!}

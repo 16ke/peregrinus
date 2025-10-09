@@ -1,34 +1,20 @@
-// src/app/api/flights/check-prices/route.ts - COMPLETE NEW FILE
+// src/app/api/flights/check-prices/route.ts - FINAL VERSION
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { flightScraperManager } from '@/lib/flight-scraper-manager';
+import { sendGridService } from '@/lib/sendgrid';
 
 const prisma = new PrismaClient();
 
-// POST - Manually check prices for all tracked flights
 export async function POST(request: NextRequest) {
   console.log('🔄 POST /api/flights/check-prices - MANUAL PRICE CHECK');
   
   try {
-    // Get all active tracked flights
     const trackedFlights = await prisma.trackedFlight.findMany({
-      where: {
-        isActive: true,
-      },
+      where: { isActive: true },
       include: {
-        priceUpdates: {
-          orderBy: {
-            recordedAt: 'desc',
-          },
-          take: 1, // Get latest price
-        },
-        user: {
-          select: {
-            id: true,
-            email: true,
-            preferences: true,
-          },
-        },
+        priceUpdates: { orderBy: { recordedAt: 'desc' }, take: 1 },
+        user: { select: { id: true, email: true, preferences: true } },
       },
     });
 
@@ -37,16 +23,11 @@ export async function POST(request: NextRequest) {
     const results = [];
     let notificationsSent = 0;
 
-    // Check prices for each tracked flight
     for (const trackedFlight of trackedFlights) {
       try {
-        console.log(`📊 Checking ${trackedFlight.origin} → ${trackedFlight.destination}`);
-        
-        // Get the latest price update to compare
         const latestPriceUpdate = trackedFlight.priceUpdates[0];
         const previousPrice = latestPriceUpdate ? Number(latestPriceUpdate.price) : null;
         
-        // Search for current flights on this route and date
         const searchDate = trackedFlight.departureDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0];
         const currentFlights = await flightScraperManager.searchAllAirlines(
           trackedFlight.origin,
@@ -54,17 +35,14 @@ export async function POST(request: NextRequest) {
           searchDate
         );
 
-        // Find the best price (lowest) from current flights
         const bestCurrentFlight = currentFlights.reduce((best, flight) => {
           return !best || flight.price < best.price ? flight : best;
         }, null as any);
 
         const currentPrice = bestCurrentFlight ? bestCurrentFlight.price : (previousPrice || Number(trackedFlight.targetPrice) * 1.2);
         
-        console.log(`💰 ${trackedFlight.origin}→${trackedFlight.destination}: ${previousPrice}€ → ${currentPrice}€`);
-
-        // Store the new price update
-        const newPriceUpdate = await prisma.priceUpdate.create({
+        // Store new price
+        await prisma.priceUpdate.create({
           data: {
             trackedFlightId: trackedFlight.id,
             price: currentPrice,
@@ -75,7 +53,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Check if we should send notifications
+        // Notification logic
         const targetPrice = Number(trackedFlight.targetPrice);
         const priceDrop = previousPrice ? previousPrice - currentPrice : 0;
         const priceDropPercent = previousPrice ? (priceDrop / previousPrice) * 100 : 0;
@@ -83,22 +61,17 @@ export async function POST(request: NextRequest) {
         let notificationType = null;
         let notificationMessage = '';
 
-        // NOTIFICATION LOGIC
         if (currentPrice <= targetPrice) {
-          // Price dropped below target!
           notificationType = 'price_drop_below_target';
           notificationMessage = `🎉 Price alert! ${trackedFlight.origin} → ${trackedFlight.destination} is now €${currentPrice} (below your target of €${targetPrice})`;
         } else if (previousPrice && currentPrice < previousPrice && priceDropPercent >= 5) {
-          // Significant price drop (5% or more)
           notificationType = 'price_drop';
           notificationMessage = `📉 Price dropped! ${trackedFlight.origin} → ${trackedFlight.destination} decreased by ${priceDropPercent.toFixed(1)}% to €${currentPrice}`;
         } else if (previousPrice && currentPrice > previousPrice && previousPrice <= targetPrice) {
-          // Price increased after being below target
           notificationType = 'price_rise_after_drop';
           notificationMessage = `📈 Price increased! ${trackedFlight.origin} → ${trackedFlight.destination} rose to €${currentPrice} (was €${previousPrice})`;
         }
 
-        // Create notification if needed
         if (notificationType && trackedFlight.user.preferences?.inAppNotifications) {
           await prisma.notification.create({
             data: {
@@ -110,15 +83,14 @@ export async function POST(request: NextRequest) {
               metadata: {
                 oldPrice: previousPrice,
                 newPrice: currentPrice,
-                targetPrice: targetPrice,
-                priceDrop: priceDrop,
-                priceDropPercent: priceDropPercent,
+                targetPrice,
+                priceDrop,
+                priceDropPercent,
                 bookingUrl: bestCurrentFlight?.bookingUrl,
               },
             },
           });
           notificationsSent++;
-          console.log(`🔔 Created notification: ${notificationMessage}`);
         }
 
         results.push({
@@ -139,8 +111,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Price check complete: ${results.length} flights checked, ${notificationsSent} notifications sent`);
-
     return NextResponse.json({
       success: true,
       message: `Checked ${results.length} flights, sent ${notificationsSent} notifications`,
@@ -150,32 +120,19 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Price check error:', error);
-    return NextResponse.json(
-      { error: 'Failed to check prices' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to check prices' }, { status: 500 });
   }
 }
 
-// GET - Get price check status/history
+// GET - For checking price update history (optional)
 export async function GET(request: NextRequest) {
   try {
     const priceUpdates = await prisma.priceUpdate.findMany({
-      orderBy: {
-        recordedAt: 'desc',
-      },
+      orderBy: { recordedAt: 'desc' },
       take: 50,
       include: {
         trackedFlight: {
-          select: {
-            origin: true,
-            destination: true,
-            user: {
-              select: {
-                email: true,
-              },
-            },
-          },
+          select: { origin: true, destination: true, user: { select: { email: true } } },
         },
       },
     });
@@ -194,10 +151,6 @@ export async function GET(request: NextRequest) {
       total: priceUpdates.length,
     });
   } catch (error) {
-    console.error('❌ Get price updates error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get price updates' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to get price updates' }, { status: 500 });
   }
 }

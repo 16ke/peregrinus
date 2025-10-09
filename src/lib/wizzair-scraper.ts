@@ -1,4 +1,4 @@
-// src/lib/wizzair-scraper.ts
+// src/lib/wizzair-scraper.ts - COMPLETE UPDATED VERSION
 export interface WizzAirFlight {
   flightNumber: string;
   departureTime: string;
@@ -15,14 +15,43 @@ export interface WizzAirFlight {
 export class WizzAirScraper {
   async searchFlights(from: string, to: string, date: string): Promise<WizzAirFlight[]> {
     try {
-      // Wizz Air routes: London to Tirana
-      if ((from === 'LGW' || from === 'STN') && to === 'TIA') {
+      // Wizz Air routes - expanded
+      const wizzairRoutes = [
+        { from: 'LGW', to: 'TIA' },
+        { from: 'STN', to: 'TIA' },
+        { from: 'TIA', to: 'LGW' },
+        { from: 'TIA', to: 'STN' },
+      ];
+
+      if (wizzairRoutes.some(route => route.from === from && route.to === to)) {
         return this.generateWizzAirFlights(from, to, date);
       }
       return [];
     } catch (error) {
       console.error('Wizz Air scraper error:', error);
       return this.generateWizzAirFlights(from, to, date);
+    }
+  }
+
+  private generateBookingUrl(
+    from: string, 
+    to: string, 
+    departureDate: string, 
+    returnDate?: string,
+    adults: number = 1,
+    children: number = 0,
+    infants: number = 0
+  ): string {
+    // WizzAir URL pattern: /LGW/TIA/2026-02-15/2026-02-22/1/0/0/null
+    const baseUrl = 'https://www.wizzair.com/en-gb/booking/select-flight';
+    const totalPassengers = adults + children + infants;
+    
+    if (returnDate) {
+      // Round trip
+      return `${baseUrl}/${from}/${to}/${departureDate}/${returnDate}/${adults}/${children}/${infants}/null`;
+    } else {
+      // One way - use departure date for both
+      return `${baseUrl}/${from}/${to}/${departureDate}/${departureDate}/${adults}/${children}/${infants}/null`;
     }
   }
 
@@ -39,6 +68,9 @@ export class WizzAirScraper {
       const randomVariation = (Math.random() - 0.5) * 30;
       const finalPrice = Math.max(59.99, basePrice + randomVariation);
 
+      // Generate booking URL with default passenger counts
+      const bookingUrl = this.generateBookingUrl(from, to, date);
+
       flights.push({
         flightNumber: time.number,
         departureTime: time.dep,
@@ -48,7 +80,7 @@ export class WizzAirScraper {
         price: parseFloat(finalPrice.toFixed(2)),
         currency: 'EUR',
         date: date,
-        bookingUrl: `https://wizzair.com/en-gb/flights/${from}/${to}/${date}`,
+        bookingUrl: bookingUrl,
         airline: 'WIZZAIR',
       });
     });
