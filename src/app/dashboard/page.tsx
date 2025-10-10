@@ -1,9 +1,9 @@
-// src/app/dashboard/page.tsx - COMPLETE UPDATED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { flightScraperManager } from '@/lib/flight-scraper-manager';
@@ -111,6 +111,7 @@ function DashboardSkeleton() {
 export default function Dashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { currency, convertPrice, getCurrencySymbol } = useCurrency();
   const router = useRouter();
   const [trackedFlights, setTrackedFlights] = useState<TrackedFlight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -327,8 +328,13 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-6">
             {trackedFlights.map((flight) => {
-              const priceStatus = getPriceStatus(flight.currentPrice, flight.targetPrice);
-              const priceDifference = ((flight.currentPrice - flight.targetPrice) / flight.targetPrice * 100).toFixed(1);
+              const currentPriceConverted = convertPrice(flight.currentPrice);
+              const targetPriceConverted = convertPrice(flight.targetPrice);
+              const lowestPriceConverted = convertPrice(flight.lowestPrice);
+              const highestPriceConverted = convertPrice(flight.highestPrice);
+              
+              const priceStatus = getPriceStatus(currentPriceConverted, targetPriceConverted);
+              const priceDifference = ((currentPriceConverted - targetPriceConverted) / targetPriceConverted * 100).toFixed(1);
               
               return (
                 <div key={flight.id} className="roman-card p-6">
@@ -368,7 +374,7 @@ export default function Dashboard() {
                     <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-start xl:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-0 lg:space-y-2 xl:space-y-0 xl:space-x-4 mb-4 lg:mb-0">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-amber-800 dark:text-orange-500">
-                          €{flight.currentPrice}
+                          {getCurrencySymbol()}{currentPriceConverted.toFixed(0)}
                         </div>
                         <div className="text-sm roman-body text-amber-700 dark:text-orange-400">
                           Current
@@ -377,7 +383,7 @@ export default function Dashboard() {
                       
                       <div className="text-center">
                         <div className="text-xl font-bold text-amber-800 dark:text-orange-500">
-                          €{flight.targetPrice}
+                          {getCurrencySymbol()}{targetPriceConverted.toFixed(0)}
                         </div>
                         <div className="text-sm roman-body text-amber-700 dark:text-orange-400">
                           Target
@@ -431,28 +437,29 @@ export default function Dashboard() {
                           PRICE HISTORY ({flight.priceUpdates.length} updates)
                         </span>
                         <span className="text-sm roman-body text-amber-600 dark:text-orange-300">
-                          Lowest: €{flight.lowestPrice} • Highest: €{flight.highestPrice}
+                          Lowest: {getCurrencySymbol()}{lowestPriceConverted.toFixed(0)} • Highest: {getCurrencySymbol()}{highestPriceConverted.toFixed(0)}
                         </span>
                       </div>
                       <div className="flex items-end h-8 space-x-1">
                         {flight.priceUpdates.slice(-10).map((update, index) => {
-                          const maxPrice = flight.highestPrice;
-                          const minPrice = flight.lowestPrice;
+                          const priceConverted = convertPrice(update.price);
+                          const maxPrice = highestPriceConverted;
+                          const minPrice = lowestPriceConverted;
                           const priceRange = maxPrice - minPrice;
-                          const height = priceRange > 0 ? ((update.price - minPrice) / priceRange) * 100 : 50;
+                          const height = priceRange > 0 ? ((priceConverted - minPrice) / priceRange) * 100 : 50;
                           
                           return (
                             <div
                               key={update.id}
                               className={`flex-1 rounded-t ${
-                                update.price <= flight.targetPrice 
+                                priceConverted <= targetPriceConverted 
                                   ? 'bg-green-500' 
-                                  : Math.abs(update.price - flight.currentPrice) < 0.01
+                                  : Math.abs(priceConverted - currentPriceConverted) < 0.01
                                   ? 'bg-amber-500 dark:bg-orange-500'
                                   : 'bg-amber-300 dark:bg-orange-700'
                               }`}
                               style={{ height: `${Math.max(20, height)}%` }}
-                              title={`€${update.price} - ${new Date(update.recordedAt).toLocaleDateString()}`}
+                              title={`${getCurrencySymbol()}${priceConverted.toFixed(0)} - ${new Date(update.recordedAt).toLocaleDateString()}`}
                             />
                           );
                         })}

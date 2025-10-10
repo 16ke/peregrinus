@@ -1,10 +1,10 @@
-// src/components/Navigation.tsx
 'use client';
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
+import Logo from './Logo';
 
 export default function Navigation() {
   const { user, logout } = useAuth();
@@ -21,10 +21,22 @@ export default function Navigation() {
         <div className="flex items-center h-24 relative">
           {/* Logo/Title - ALWAYS visible, perfectly centered */}
           <div className="flex-1 flex justify-center">
-            <Link href="/" className="no-underline">
-              <h1 className="roman-heading text-4xl md:text-6xl tracking-widest nav-title-light dark:nav-title-dark">
-                PEREGRINVS
-              </h1>
+            <Link href="/" className="no-underline hover:scale-105 transition-transform duration-200">
+              {/* Desktop: Large logo and full text */}
+              <div className="hidden md:flex items-center space-x-6">
+                <Logo size="xl" showText={false} />
+                <h1 className="roman-heading text-6xl tracking-widest nav-title-light dark:nav-title-dark">
+                  PEREGRINVS
+                </h1>
+              </div>
+              
+              {/* Mobile: Smaller logo and text */}
+              <div className="flex md:hidden items-center space-x-4">
+                <Logo size="lg" showText={false} />
+                <h1 className="roman-heading text-3xl tracking-widest nav-title-light dark:nav-title-dark">
+                  PEREGRINVS
+                </h1>
+              </div>
             </Link>
           </div>
 

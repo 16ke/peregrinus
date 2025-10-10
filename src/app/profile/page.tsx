@@ -1,8 +1,8 @@
-// src/app/profile/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency, Currency } from '@/contexts/CurrencyContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Bell, Mail, Globe, LogOut, Save, X } from 'lucide-react';
@@ -12,13 +12,14 @@ interface UserPreferences {
   userId: string;
   emailNotifications: boolean;
   inAppNotifications: boolean;
-  currency: string;
+  currency: Currency;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export default function Profile() {
   const { user, logout } = useAuth();
+  const { currency, setCurrency } = useCurrency();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,7 +40,7 @@ export default function Profile() {
     email: '',
     emailNotifications: true,
     inAppNotifications: true,
-    currency: 'EUR',
+    currency: currency,
   });
 
   useEffect(() => {
@@ -50,10 +51,10 @@ export default function Profile() {
         email: user.email,
         emailNotifications: true,
         inAppNotifications: true,
-        currency: 'EUR',
+        currency: currency,
       });
     }
-  }, [user]);
+  }, [user, currency]);
 
   const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +63,9 @@ export default function Profile() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update currency context
+      setCurrency(formData.currency);
       
       // TODO: Save preferences to API
       console.log('Saving preferences:', formData);
@@ -244,15 +248,14 @@ export default function Profile() {
                   </label>
                   <select
                     value={formData.currency}
-                    onChange={(e) => handleInputChange('currency', e.target.value)}
+                    onChange={(e) => handleInputChange('currency', e.target.value as Currency)}
                     className="roman-input w-full"
                   >
                     <option value="EUR">Euro (€)</option>
                     <option value="GBP">British Pound (£)</option>
-                    <option value="USD">US Dollar ($)</option>
                   </select>
                   <p className="text-sm text-amber-600 dark:text-orange-400 mt-1">
-                    This will be used for all price displays
+                    This will be used for all price displays throughout the app
                   </p>
                 </div>
               </div>

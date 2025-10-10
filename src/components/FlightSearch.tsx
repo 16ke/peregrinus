@@ -1,10 +1,10 @@
-// src/components/FlightSearch.tsx - COMPLETE UPDATED VERSION WITH PASSENGERS & REAL BOOKING URLS
 'use client';
 
 import { useState } from 'react';
 import { FlightSearch as FlightSearchType, Flight } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { flightScraperManager } from '@/lib/flight-scraper-manager';
 
 const CITIES = [
@@ -17,20 +17,10 @@ const CITIES = [
   { code: 'VOA', name: 'Vlore' },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const CURRENCIES = [
-  { code: 'EUR', symbol: '€', name: 'EUR' },
-  { code: 'GBP', symbol: '£', name: 'GBP' },
-];
-
-// Real conversion rates (approximate)
-const CONVERSION_RATES = {
-  EUR: 1,
-  GBP: 1.18, // 1 EUR = 1.18 GBP (approx)
-};
-
 export default function FlightSearch() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { currency, convertPrice, getCurrencySymbol } = useCurrency();
   const [searchParams, setSearchParams] = useState<FlightSearchType>({
     origin: '',
     destination: '',
@@ -41,7 +31,6 @@ export default function FlightSearch() {
     children: 0,
     infants: 0,
   });
-  const [searchCurrency, setSearchCurrency] = useState('EUR');
   const [trackingCurrency, setTrackingCurrency] = useState('EUR');
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,8 +61,8 @@ export default function FlightSearch() {
       // Filter by max price if set (convert max price to EUR for comparison)
       let filteredFlights = data.flights || [];
       if (searchParams.maxPrice) {
-        const maxPriceInEUR = searchCurrency === 'GBP' 
-          ? Number(searchParams.maxPrice) / CONVERSION_RATES.GBP
+        const maxPriceInEUR = currency === 'GBP' 
+          ? Number(searchParams.maxPrice) / 0.85 // Convert GBP to EUR
           : Number(searchParams.maxPrice);
         
         filteredFlights = filteredFlights.filter((flight: Flight) => 
@@ -217,19 +206,8 @@ export default function FlightSearch() {
     return parts.join(', ');
   };
 
-  const getSearchCurrencySymbol = () => {
-    return CURRENCIES.find(c => c.code === searchCurrency)?.symbol || '€';
-  };
-
-  const getTrackingCurrencySymbol = () => {
-    return CURRENCIES.find(c => c.code === trackingCurrency)?.symbol || '€';
-  };
-
   const getDisplayPrice = (flight: Flight) => {
-    if (searchCurrency === 'GBP') {
-      return (flight.price * CONVERSION_RATES.GBP).toFixed(0);
-    }
-    return flight.price.toFixed(0);
+    return convertPrice(flight.price).toFixed(0);
   };
 
   const isRealBookingLink = (bookingUrl: string | undefined): boolean => {
@@ -440,20 +418,12 @@ export default function FlightSearch() {
 
             <div>
               <label className="block text-lg roman-body text-amber-800 dark:text-orange-500 mb-2 font-semibold">
-                MAX PRICE
+                MAX PRICE ({getCurrencySymbol()})
               </label>
               <div className="flex space-x-3">
-                <select
-                  value={searchCurrency}
-                  onChange={(e) => setSearchCurrency(e.target.value)}
-                  className="roman-input !w-32"
-                >
-                  {CURRENCIES.map((currency) => (
-                    <option key={currency.code} value={currency.code}>
-                      {currency.symbol} {currency.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="roman-input !w-32 flex items-center justify-center bg-amber-50 dark:bg-orange-950 text-amber-800 dark:text-orange-400 font-semibold">
+                  {getCurrencySymbol()} {currency}
+                </div>
                 <input
                   type="number"
                   placeholder="Max price"
@@ -577,9 +547,9 @@ export default function FlightSearch() {
 
                         <div className="text-right mb-4 md:mb-0">
                           <p className="text-3xl font-bold text-amber-800 dark:text-orange-500">
-                            {getSearchCurrencySymbol()}{getDisplayPrice(flight)}
+                            {getCurrencySymbol()}{getDisplayPrice(flight)}
                           </p>
-                          <p className="text-sm text-amber-600 dark:text-orange-400">{searchCurrency}</p>
+                          <p className="text-sm text-amber-600 dark:text-orange-400">{currency}</p>
                           {isRealBookingLink(flight.bookingUrl) && (
                             <a
                               href={flight.bookingUrl!}
@@ -600,11 +570,8 @@ export default function FlightSearch() {
                                 onChange={(e) => setTrackingCurrency(e.target.value)}
                                 className="roman-input !w-24"
                               >
-                                {CURRENCIES.map((currency) => (
-                                  <option key={currency.code} value={currency.code}>
-                                    {currency.symbol} {currency.name}
-                                  </option>
-                                ))}
+                                <option value="EUR">€ EUR</option>
+                                <option value="GBP">£ GBP</option>
                               </select>
                               <input
                                 type="number"

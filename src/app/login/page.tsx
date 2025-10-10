@@ -1,4 +1,3 @@
-// src/app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -6,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Logo from '@/components/Logo';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -46,7 +46,11 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="nav-bar rounded-xl shadow-xl p-8 w-full max-w-md">
+        {/* Logo Section */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-6">
+            <Logo size="xxl" showText={false} />
+          </div>
           <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest mb-2">
             WELCOME BACK
           </h1>
