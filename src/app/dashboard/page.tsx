@@ -328,10 +328,16 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-6">
             {trackedFlights.map((flight) => {
-              const currentPriceConverted = convertPrice(flight.currentPrice);
-              const targetPriceConverted = convertPrice(flight.targetPrice);
-              const lowestPriceConverted = convertPrice(flight.lowestPrice);
-              const highestPriceConverted = convertPrice(flight.highestPrice);
+              // FIX: Ensure all prices are numbers before conversion
+              const currentPriceNumber = Number(flight.currentPrice) || 0;
+              const targetPriceNumber = Number(flight.targetPrice) || 0;
+              const lowestPriceNumber = Number(flight.lowestPrice) || 0;
+              const highestPriceNumber = Number(flight.highestPrice) || 0;
+              
+              const currentPriceConverted = convertPrice(currentPriceNumber);
+              const targetPriceConverted = convertPrice(targetPriceNumber);
+              const lowestPriceConverted = convertPrice(lowestPriceNumber);
+              const highestPriceConverted = convertPrice(highestPriceNumber);
               
               const priceStatus = getPriceStatus(currentPriceConverted, targetPriceConverted);
               const priceDifference = ((currentPriceConverted - targetPriceConverted) / targetPriceConverted * 100).toFixed(1);
@@ -442,7 +448,8 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-end h-8 space-x-1">
                         {flight.priceUpdates.slice(-10).map((update, index) => {
-                          const priceConverted = convertPrice(update.price);
+                          const priceNumber = Number(update.price) || 0;
+                          const priceConverted = convertPrice(priceNumber);
                           const maxPrice = highestPriceConverted;
                           const minPrice = lowestPriceConverted;
                           const priceRange = maxPrice - minPrice;

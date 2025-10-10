@@ -113,10 +113,14 @@ export default function FlightSearch() {
         return;
       }
 
+      // FIX: Ensure departure is a Date object
+      const departureDate = new Date(flight.departure);
+      const departureTime = departureDate.toTimeString().split(' ')[0].substring(0, 5);
+
       console.log('Sending SPECIFIC flight tracking request:', {
         flightNumber: flight.flightNumber,
         airline: flight.airline,
-        departureTime: flight.departure,
+        departureTime: departureTime,
         adults: searchParams.adults,
         children: searchParams.children,
         infants: searchParams.infants
@@ -133,8 +137,8 @@ export default function FlightSearch() {
           destination: flight.destination,
           flightNumber: flight.flightNumber,
           airline: flight.airline,
-          departureDate: flight.departure.toISOString().split('T')[0],
-          departureTime: flight.departure.toTimeString().split(' ')[0].substring(0, 5),
+          departureDate: departureDate.toISOString().split('T')[0],
+          departureTime: departureTime,
           currentPrice: flight.price,
           targetPrice: trackingPrice,
           currency: trackingCurrency,
@@ -153,7 +157,7 @@ export default function FlightSearch() {
         addToast({
           type: 'success',
           title: 'Flight Tracking Started!',
-          message: `Now tracking ${flight.airline} ${flight.flightNumber} on ${flight.departure.toLocaleDateString()}`
+          message: `Now tracking ${flight.airline} ${flight.flightNumber} on ${departureDate.toLocaleDateString()}`
         });
         setTrackingPrice(0);
       } else {
