@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency, Currency } from '@/contexts/CurrencyContext';
+import { useToast } from '@/contexts/ToastContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Bell, Mail, Globe, LogOut, Save, X } from 'lucide-react';
@@ -18,68 +19,137 @@ interface UserPreferences {
 }
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, updateUser } = useAuth();
   const { currency, setCurrency } = useCurrency();
+  const { addToast } = useToast();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    id: '',
-    userId: '',
-    emailNotifications: true,
-    inAppNotifications: true,
-    currency: 'EUR',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     emailNotifications: true,
     inAppNotifications: true,
-    currency: currency,
+    currency: 'EUR' as Currency,
   });
 
   useEffect(() => {
     if (user) {
-      // Load user data and preferences
+      fetchUserPreferences();
+    }
+  }, [user]);
+
+  const fetchUserPreferences = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/user/preferences', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(data.preferences);
+        
+        // Update form data with fetched preferences
+        setFormData({
+          name: user?.name || '',
+          email: user?.email || '',
+          emailNotifications: data.preferences.emailNotifications,
+          inAppNotifications: data.preferences.inAppNotifications,
+          currency: data.preferences.currency,
+        });
+
+        // Update currency context
+        setCurrency(data.preferences.currency);
+      } else {
+        console.error('Failed to fetch preferences');
+        // Set default form data if fetch fails
+        setFormData({
+          name: user?.name || '',
+          email: user?.email || '',
+          emailNotifications: true,
+          inAppNotifications: true,
+          currency: currency,
+        });
+      }
+    } catch (error) {
+      console.error('Fetch preferences error:', error);
+      // Set default form data on error
       setFormData({
-        name: user.name || '',
-        email: user.email,
+        name: user?.name || '',
+        email: user?.email || '',
         emailNotifications: true,
         inAppNotifications: true,
         currency: currency,
       });
+    } finally {
+      setLoading(false);
     }
-  }, [user, currency]);
+  };
 
   const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update currency context
-      setCurrency(formData.currency);
-      
-      // TODO: Save preferences to API
-      console.log('Saving preferences:', formData);
-      
-      alert('Preferences saved successfully!');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          emailNotifications: formData.emailNotifications,
+          inAppNotifications: formData.inAppNotifications,
+          currency: formData.currency,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update local state
+        setPreferences(data.preferences);
+        
+        // Update user context with new name
+        if (formData.name !== user?.name) {
+          updateUser({ name: formData.name });
+        }
+        
+        // Update currency context
+        setCurrency(formData.currency);
+
+        addToast({
+          type: 'success',
+          title: 'Preferences Saved!',
+          message: 'Your settings have been updated successfully'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save preferences');
+      }
     } catch (error) {
       console.error('Save preferences error:', error);
-      alert('Failed to save preferences');
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: error instanceof Error ? error.message : 'Failed to save preferences'
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleLogout = () => {
+    const { logout } = useAuth();
     logout();
     setShowLogoutConfirm(false);
     router.push('/login');
@@ -105,6 +175,18 @@ export default function Profile() {
           <Link href="/login" className="search-button inline-block text-lg py-3 px-8">
             SIGN IN
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="roman-heading text-2xl text-amber-800 dark:text-orange-500 mb-4">
+            LOADING PROFILE...
+          </div>
         </div>
       </div>
     );
