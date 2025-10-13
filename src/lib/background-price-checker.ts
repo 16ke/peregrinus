@@ -1,9 +1,36 @@
-// src/lib/background-price-checker.ts - UPDATED WITH EMAIL INTEGRATION
+// src/lib/background-price-checker.ts - FIXED VERSION
 import { PrismaClient } from '@prisma/client';
 import { flightScraperManager } from './flight-scraper-manager';
 import { sendGridService, type EmailNotificationData } from './sendgrid';
 
 const prisma = new PrismaClient();
+
+interface FlightResult {
+  price: number;
+  airline?: string;
+  flightNumber?: string;
+  departureTime?: string;
+  bookingUrl?: string;
+}
+
+interface TrackedFlightWithDetails {
+  id: string;
+  origin: string;
+  destination: string;
+  targetPrice: number; // This will be converted from Decimal
+  departureDate: Date | null;
+  isActive: boolean;
+  priceUpdates: Array<{ price: number }>;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    preferences: {
+      emailNotifications: boolean;
+      inAppNotifications: boolean;
+    } | null;
+  };
+}
 
 export interface PriceCheckResult {
   flightId: string;
@@ -49,6 +76,7 @@ export class BackgroundPriceChecker {
             select: {
               id: true,
               email: true,
+              name: true,
               preferences: true,
             },
           },
@@ -62,7 +90,13 @@ export class BackgroundPriceChecker {
 
       for (const trackedFlight of trackedFlights) {
         try {
-          const result = await this.checkSingleFlight(trackedFlight);
+          // Convert Decimal to number for the targetPrice
+          const flightWithConvertedPrice = {
+            ...trackedFlight,
+            targetPrice: Number(trackedFlight.targetPrice)
+          };
+          
+          const result = await this.checkSingleFlight(flightWithConvertedPrice as unknown as TrackedFlightWithDetails);
           results.push(result);
           
           if (result.notificationSent) {
@@ -108,7 +142,7 @@ export class BackgroundPriceChecker {
     }
   }
 
-  private async checkSingleFlight(trackedFlight: any): Promise<PriceCheckResult> {
+  private async checkSingleFlight(trackedFlight: TrackedFlightWithDetails): Promise<PriceCheckResult> {
     const latestPriceUpdate = trackedFlight.priceUpdates[0];
     const previousPrice = latestPriceUpdate ? Number(latestPriceUpdate.price) : null;
     
@@ -120,11 +154,11 @@ export class BackgroundPriceChecker {
       searchDate
     );
 
-    const bestCurrentFlight = currentFlights.reduce((best, flight) => {
+    const bestCurrentFlight = currentFlights.reduce((best: FlightResult | null, flight: FlightResult) => {
       return !best || flight.price < best.price ? flight : best;
-    }, null as any);
+    }, null);
 
-    const currentPrice = bestCurrentFlight ? bestCurrentFlight.price : (previousPrice || Number(trackedFlight.targetPrice) * 1.2);
+    const currentPrice = bestCurrentFlight ? bestCurrentFlight.price : (previousPrice || trackedFlight.targetPrice * 1.2);
     
     // Store new price
     await prisma.priceUpdate.create({
@@ -139,7 +173,7 @@ export class BackgroundPriceChecker {
     });
 
     // Notification logic
-    const targetPrice = Number(trackedFlight.targetPrice);
+    const targetPrice = trackedFlight.targetPrice;
     const priceDrop = previousPrice ? previousPrice - currentPrice : 0;
     const priceDropPercent = previousPrice ? (priceDrop / previousPrice) * 100 : 0;
 
@@ -163,7 +197,7 @@ export class BackgroundPriceChecker {
       emailNotificationData = {
         to: trackedFlight.user.email,
         userName: trackedFlight.user.name || 'Traveler',
-        notificationType: notificationType as any,
+        notificationType: notificationType as 'price_drop_below_target' | 'price_drop' | 'price_rise_after_drop',
         trackedFlight: {
           origin: trackedFlight.origin,
           destination: trackedFlight.destination,

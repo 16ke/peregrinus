@@ -1,4 +1,3 @@
-// src/lib/easyjet-scraper.ts - COMPLETE UPDATED VERSION
 export interface EasyJetFlight {
   flightNumber: string;
   departureTime: string;
@@ -10,10 +9,12 @@ export interface EasyJetFlight {
   date: string;
   bookingUrl: string;
   airline: 'EASYJET';
+  isReturn?: boolean;
+  returnDate?: string;
 }
 
 export class EasyJetScraper {
-  async searchFlights(from: string, to: string, date: string): Promise<EasyJetFlight[]> {
+  async searchFlights(from: string, to: string, date: string, returnDate?: string, adults: number = 1, children: number = 0, infants: number = 0): Promise<EasyJetFlight[]> {
     try {
       // EasyJet routes - expanded
       const easyjetRoutes = [
@@ -24,12 +25,12 @@ export class EasyJetScraper {
       ];
 
       if (easyjetRoutes.some(route => route.from === from && route.to === to)) {
-        return this.generateEasyJetFlights(from, to, date);
+        return this.generateEasyJetFlights(from, to, date, returnDate, adults, children, infants);
       }
       return [];
     } catch (error) {
       console.error('EasyJet scraper error:', error);
-      return this.generateEasyJetFlights(from, to, date);
+      return this.generateEasyJetFlights(from, to, date, returnDate, adults, children, infants);
     }
   }
 
@@ -44,6 +45,7 @@ export class EasyJetScraper {
   ): string {
     // EasyJet uses flightconnections subdomain with parameters
     const baseUrl = 'https://flightconnections.easyjet.com/en/search';
+    
     const params = new URLSearchParams({
       adult: adults.toString(),
       child: children.toString(),
@@ -52,15 +54,27 @@ export class EasyJetScraper {
       destinations: to,
       isOneWay: returnDate ? 'false' : 'true',
       origins: from,
-      ...(returnDate && { returnDate: returnDate }),
       currency: 'GBP',
       residency: 'GB'
     });
 
+    // Add return date only if it exists
+    if (returnDate) {
+      params.append('returnDate', returnDate);
+    }
+
     return `${baseUrl}?${params.toString()}`;
   }
 
-  private generateEasyJetFlights(from: string, to: string, date: string): EasyJetFlight[] {
+  private generateEasyJetFlights(
+    from: string, 
+    to: string, 
+    date: string, 
+    returnDate?: string,
+    adults: number = 1,
+    children: number = 0,
+    infants: number = 0
+  ): EasyJetFlight[] {
     const flights: EasyJetFlight[] = [];
     const baseTimes = [
       { dep: '07:15', arr: '10:30', number: 'EZY1234' },
@@ -74,8 +88,8 @@ export class EasyJetScraper {
       const randomVariation = (Math.random() - 0.5) * 25;
       const finalPrice = Math.max(39.99, basePrice + randomVariation);
 
-      // Generate booking URL with default passenger counts
-      const bookingUrl = this.generateBookingUrl(from, to, date);
+      // Generate booking URL with actual passenger counts and return date
+      const bookingUrl = this.generateBookingUrl(from, to, date, returnDate, adults, children, infants);
 
       flights.push({
         flightNumber: time.number,
@@ -88,6 +102,8 @@ export class EasyJetScraper {
         date: date,
         bookingUrl: bookingUrl,
         airline: 'EASYJET',
+        isReturn: !!returnDate,
+        returnDate: returnDate,
       });
     });
 

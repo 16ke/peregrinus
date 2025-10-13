@@ -1,4 +1,3 @@
-// src/lib/wizzair-scraper.ts - COMPLETE UPDATED VERSION
 export interface WizzAirFlight {
   flightNumber: string;
   departureTime: string;
@@ -10,10 +9,12 @@ export interface WizzAirFlight {
   date: string;
   bookingUrl: string;
   airline: 'WIZZAIR';
+  isReturn?: boolean;
+  returnDate?: string;
 }
 
 export class WizzAirScraper {
-  async searchFlights(from: string, to: string, date: string): Promise<WizzAirFlight[]> {
+  async searchFlights(from: string, to: string, date: string, returnDate?: string, adults: number = 1, children: number = 0, infants: number = 0): Promise<WizzAirFlight[]> {
     try {
       // Wizz Air routes - expanded
       const wizzairRoutes = [
@@ -24,12 +25,12 @@ export class WizzAirScraper {
       ];
 
       if (wizzairRoutes.some(route => route.from === from && route.to === to)) {
-        return this.generateWizzAirFlights(from, to, date);
+        return this.generateWizzAirFlights(from, to, date, returnDate, adults, children, infants);
       }
       return [];
     } catch (error) {
       console.error('Wizz Air scraper error:', error);
-      return this.generateWizzAirFlights(from, to, date);
+      return this.generateWizzAirFlights(from, to, date, returnDate, adults, children, infants);
     }
   }
 
@@ -44,18 +45,29 @@ export class WizzAirScraper {
   ): string {
     // WizzAir URL pattern: /LGW/TIA/2026-02-15/2026-02-22/1/0/0/null
     const baseUrl = 'https://www.wizzair.com/en-gb/booking/select-flight';
-    const totalPassengers = adults + children + infants;
+    
+    // Format dates properly for WizzAir
+    const formattedOutDate = departureDate;
+    const formattedInDate = returnDate || departureDate;
     
     if (returnDate) {
-      // Round trip
-      return `${baseUrl}/${from}/${to}/${departureDate}/${returnDate}/${adults}/${children}/${infants}/null`;
+      // Round trip - use actual return date
+      return `${baseUrl}/${from}/${to}/${formattedOutDate}/${formattedInDate}/${adults}/${children}/${infants}/null`;
     } else {
-      // One way - use departure date for both
-      return `${baseUrl}/${from}/${to}/${departureDate}/${departureDate}/${adults}/${children}/${infants}/null`;
+      // One way - still use same date for both (WizzAir requirement)
+      return `${baseUrl}/${from}/${to}/${formattedOutDate}/${formattedOutDate}/${adults}/${children}/${infants}/null`;
     }
   }
 
-  private generateWizzAirFlights(from: string, to: string, date: string): WizzAirFlight[] {
+  private generateWizzAirFlights(
+    from: string, 
+    to: string, 
+    date: string, 
+    returnDate?: string,
+    adults: number = 1,
+    children: number = 0,
+    infants: number = 0
+  ): WizzAirFlight[] {
     const flights: WizzAirFlight[] = [];
     const baseTimes = [
       { dep: '06:45', arr: '10:15', number: 'W61234' },
@@ -68,8 +80,8 @@ export class WizzAirScraper {
       const randomVariation = (Math.random() - 0.5) * 30;
       const finalPrice = Math.max(59.99, basePrice + randomVariation);
 
-      // Generate booking URL with default passenger counts
-      const bookingUrl = this.generateBookingUrl(from, to, date);
+      // Generate booking URL with actual passenger counts and return date
+      const bookingUrl = this.generateBookingUrl(from, to, date, returnDate, adults, children, infants);
 
       flights.push({
         flightNumber: time.number,
@@ -82,6 +94,8 @@ export class WizzAirScraper {
         date: date,
         bookingUrl: bookingUrl,
         airline: 'WIZZAIR',
+        isReturn: !!returnDate,
+        returnDate: returnDate,
       });
     });
 

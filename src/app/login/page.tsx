@@ -1,3 +1,4 @@
+// src/app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -112,7 +113,7 @@ export default function Login() {
 
         <div className="mt-6 text-center">
           <p className="roman-body text-amber-700 dark:text-orange-400">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link 
               href="/register" 
               className="text-amber-800 dark:text-orange-500 font-semibold hover:underline"

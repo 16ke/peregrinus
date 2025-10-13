@@ -1,4 +1,3 @@
-// src/lib/ryanair-scraper.ts - COMPLETE UPDATED VERSION
 export interface RyanairFlight {
   flightNumber: string;
   departureTime: string;
@@ -10,10 +9,12 @@ export interface RyanairFlight {
   date: string;
   bookingUrl: string;
   airline: 'RYANAIR';
+  isReturn?: boolean;
+  returnDate?: string;
 }
 
 export class RyanairScraper {
-  async searchFlights(from: string, to: string, date: string): Promise<RyanairFlight[]> {
+  async searchFlights(from: string, to: string, date: string, returnDate?: string, adults: number = 1, children: number = 0, infants: number = 0): Promise<RyanairFlight[]> {
     try {
       // Ryanair routes - expanded
       const ryanairRoutes = [
@@ -26,12 +27,12 @@ export class RyanairScraper {
       ];
 
       if (ryanairRoutes.some(route => route.from === from && route.to === to)) {
-        return this.generateRyanairFlights(from, to, date);
+        return this.generateRyanairFlights(from, to, date, returnDate, adults, children, infants);
       }
       return [];
     } catch (error) {
       console.error('Ryanair scraper error:', error);
-      return this.generateRyanairFlights(from, to, date);
+      return this.generateRyanairFlights(from, to, date, returnDate, adults, children, infants);
     }
   }
 
@@ -45,13 +46,18 @@ export class RyanairScraper {
     infants: number = 0
   ): string {
     const baseUrl = 'https://www.ryanair.com/gb/en/trip/flights/select';
+    
+    // Ryanair expects specific date format: YYYY-MM-DD
+    const formattedOutDate = departureDate;
+    const formattedInDate = returnDate || departureDate;
+    
     const params = new URLSearchParams({
       adults: adults.toString(),
       teens: '0',
       children: children.toString(),
       infants: infants.toString(),
-      dateOut: departureDate,
-      dateIn: returnDate || departureDate,
+      dateOut: formattedOutDate,
+      dateIn: formattedInDate,
       isConnectedFlight: 'false',
       discount: '0',
       promoCode: '',
@@ -62,8 +68,8 @@ export class RyanairScraper {
       tpTeens: '0',
       tpChildren: children.toString(),
       tpInfants: infants.toString(),
-      tpStartDate: departureDate,
-      tpEndDate: returnDate || departureDate,
+      tpStartDate: formattedOutDate,
+      tpEndDate: formattedInDate,
       tpDiscount: '0',
       tpPromoCode: '',
       tpOriginIata: from,
@@ -73,7 +79,15 @@ export class RyanairScraper {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  private generateRyanairFlights(from: string, to: string, date: string): RyanairFlight[] {
+  private generateRyanairFlights(
+    from: string, 
+    to: string, 
+    date: string, 
+    returnDate?: string,
+    adults: number = 1,
+    children: number = 0,
+    infants: number = 0
+  ): RyanairFlight[] {
     const flights: RyanairFlight[] = [];
     const baseTimes = [
       { dep: '06:30', arr: '09:45', number: 'FR1234' },
@@ -88,8 +102,8 @@ export class RyanairScraper {
       const randomVariation = (Math.random() - 0.5) * 20;
       const finalPrice = Math.max(19.99, basePrice + randomVariation);
 
-      // Generate booking URL with default passenger counts (can be overridden by user selection)
-      const bookingUrl = this.generateBookingUrl(from, to, date);
+      // Generate booking URL with actual passenger counts and return date
+      const bookingUrl = this.generateBookingUrl(from, to, date, returnDate, adults, children, infants);
 
       flights.push({
         flightNumber: time.number,
@@ -102,6 +116,8 @@ export class RyanairScraper {
         date: date,
         bookingUrl: bookingUrl,
         airline: 'RYANAIR',
+        isReturn: !!returnDate,
+        returnDate: returnDate,
       });
     });
 

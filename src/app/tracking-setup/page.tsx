@@ -1,4 +1,4 @@
-// src/app/tracking-setup/page.tsx - CLEAN VERSION WITH ONLY PASSENGER SELECTION
+// src/app/tracking-setup/page.tsx - FIXED VERSION
 'use client';
 
 import { useState } from 'react';
@@ -140,7 +140,7 @@ export default function TrackingSetup() {
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | boolean | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -486,7 +486,7 @@ export default function TrackingSetup() {
                 required
               />
               <p className="text-sm text-amber-600 dark:text-orange-400 mt-2">
-                We'll notify you when flight prices drop below €{formData.targetPrice} for {getPassengerSummary()}
+                We&apos;ll notify you when flight prices drop below €{formData.targetPrice} for {getPassengerSummary()}
               </p>
             </div>
 

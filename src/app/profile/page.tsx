@@ -1,3 +1,4 @@
+// src/app/profile/page.tsx - FIXED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +20,7 @@ interface UserPreferences {
 }
 
 export default function Profile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { currency, setCurrency } = useCurrency();
   const { addToast } = useToast();
   const router = useRouter();
@@ -149,13 +150,12 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    const { logout } = useAuth();
     logout();
     setShowLogoutConfirm(false);
     router.push('/login');
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | boolean | Currency) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -461,7 +461,7 @@ export default function Profile() {
               LOGOUT CONFIRMATION
             </h3>
             <p className="roman-body text-amber-700 dark:text-orange-400 mb-6">
-              Are you sure you want to logout? You'll need to sign in again to access your tracked flights.
+              Are you sure you want to logout? You&apos;ll need to sign in again to access your tracked flights.
             </p>
             <div className="flex space-x-3">
               <button

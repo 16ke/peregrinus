@@ -1,4 +1,3 @@
-// src/lib/flight-scraper-manager.ts - COMPLETE UPDATED VERSION
 import { ryanairScraper, RyanairFlight } from './ryanair-scraper';
 import { easyJetScraper, EasyJetFlight } from './easyjet-scraper';
 import { wizzAirScraper, WizzAirFlight } from './wizzair-scraper';
@@ -29,21 +28,30 @@ export class FlightScraperManager {
     ],
   };
 
-  async searchAllAirlines(from: string, to: string, date: string): Promise<FlightData[]> {
+  async searchAllAirlines(
+    from: string, 
+    to: string, 
+    date: string, 
+    returnDate?: string,
+    adults: number = 1,
+    children: number = 0,
+    infants: number = 0
+  ): Promise<FlightData[]> {
     const allFlights: FlightData[] = [];
     
     const operatingAirlines = this.getOperatingAirlines(from, to);
     
-    console.log(`🛫 Searching ${operatingAirlines.join(', ')} for ${from} → ${to} on ${date}`);
+    console.log(`🛫 Searching ${operatingAirlines.join(', ')} for ${from} → ${to} on ${date}${returnDate ? ` returning ${returnDate}` : ''}`);
+    console.log(`👥 Passengers: ${adults} adults, ${children} children, ${infants} infants`);
 
     const searchPromises = operatingAirlines.map(airline => {
       switch (airline) {
         case 'RYANAIR':
-          return ryanairScraper.searchFlights(from, to, date);
+          return ryanairScraper.searchFlights(from, to, date, returnDate, adults, children, infants);
         case 'EASYJET':
-          return easyJetScraper.searchFlights(from, to, date);
+          return easyJetScraper.searchFlights(from, to, date, returnDate, adults, children, infants);
         case 'WIZZAIR':
-          return wizzAirScraper.searchFlights(from, to, date);
+          return wizzAirScraper.searchFlights(from, to, date, returnDate, adults, children, infants);
         default:
           return Promise.resolve([]);
       }

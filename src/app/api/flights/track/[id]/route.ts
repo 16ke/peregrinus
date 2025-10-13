@@ -7,9 +7,11 @@ const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
@@ -24,7 +26,7 @@ export async function GET(
 
     const trackedFlight = await prisma.trackedFlight.findFirst({
       where: {
-        id: params.id,
+        id: id,
         userId: decoded.userId,
         isActive: true,
       },
@@ -73,9 +75,11 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
@@ -91,7 +95,7 @@ export async function DELETE(
     // Set isActive to false instead of deleting
     const updatedFlight = await prisma.trackedFlight.update({
       where: {
-        id: params.id,
+        id: id,
       },
       data: {
         isActive: false,

@@ -1,10 +1,18 @@
-// src/app/api/flights/check-prices/route.ts - FINAL VERSION
+// src/app/api/flights/check-prices/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { flightScraperManager } from '@/lib/flight-scraper-manager';
 import { sendGridService } from '@/lib/sendgrid';
 
 const prisma = new PrismaClient();
+
+interface FlightResult {
+  price: number;
+  airline?: string;
+  flightNumber?: string;
+  departureTime?: string;
+  bookingUrl?: string;
+}
 
 export async function POST(request: NextRequest) {
   console.log('🔄 POST /api/flights/check-prices - MANUAL PRICE CHECK');
@@ -35,9 +43,9 @@ export async function POST(request: NextRequest) {
           searchDate
         );
 
-        const bestCurrentFlight = currentFlights.reduce((best, flight) => {
+        const bestCurrentFlight = currentFlights.reduce((best: FlightResult | null, flight: FlightResult) => {
           return !best || flight.price < best.price ? flight : best;
-        }, null as any);
+        }, null);
 
         const currentPrice = bestCurrentFlight ? bestCurrentFlight.price : (previousPrice || Number(trackedFlight.targetPrice) * 1.2);
         

@@ -1,4 +1,3 @@
-// src/app/api/flights/search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { Flight } from '@/types';
 import { flightScraperManager } from '@/lib/flight-scraper-manager';
@@ -43,6 +42,10 @@ export async function GET(request: NextRequest) {
     const origin = searchParams.get('origin');
     const destination = searchParams.get('destination');
     const date = searchParams.get('date');
+    const returnDate = searchParams.get('returnDate');
+    const adults = parseInt(searchParams.get('adults') || '1');
+    const children = parseInt(searchParams.get('children') || '0');
+    const infants = parseInt(searchParams.get('infants') || '0');
 
     if (!origin || !destination) {
       return NextResponse.json(
@@ -64,9 +67,18 @@ export async function GET(request: NextRequest) {
 
     const searchDate = date || getRealisticFutureDate();
     
-    console.log(`🔍 Searching real flights: ${origin} → ${destination} on ${searchDate}`);
+    console.log(`🔍 Searching real flights: ${origin} → ${destination} on ${searchDate}${returnDate ? ` returning ${returnDate}` : ''}`);
+    console.log(`👥 Passengers: ${adults} adults, ${children} children, ${infants} infants`);
 
-    const realFlights = await flightScraperManager.searchAllAirlines(origin, destination, searchDate);
+    const realFlights = await flightScraperManager.searchAllAirlines(
+      origin, 
+      destination, 
+      searchDate, 
+      returnDate || undefined,
+      adults,
+      children,
+      infants
+    );
 
     const flights: Flight[] = realFlights.map((flight, index) => ({
       id: `${flight.airline.toLowerCase()}-${flight.flightNumber}-${index}`,
@@ -93,6 +105,8 @@ export async function GET(request: NextRequest) {
         origin,
         destination,
         date: searchDate,
+        returnDate: returnDate || null,
+        passengers: { adults, children, infants },
         totalResults: flights.length,
         source: 'Real Airline Data',
         airlines: [...new Set(realFlights.map(f => f.airline))],

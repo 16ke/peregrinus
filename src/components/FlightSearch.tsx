@@ -53,9 +53,22 @@ export default function FlightSearch() {
     try {
       const searchDate = searchParams.departureDate || getDefaultDate();
       
-      const response = await fetch(
-        `/api/flights/search?origin=${searchParams.origin}&destination=${searchParams.destination}&date=${searchDate}`
-      );
+      // Build query parameters with passenger info and return date
+      const queryParams = new URLSearchParams({
+        origin: searchParams.origin,
+        destination: searchParams.destination,
+        date: searchDate,
+        adults: (searchParams.adults || 1).toString(),
+        children: (searchParams.children || 0).toString(),
+        infants: (searchParams.infants || 0).toString(),
+      });
+
+      // Add return date if it exists
+      if (searchParams.returnDate) {
+        queryParams.append('returnDate', searchParams.returnDate);
+      }
+
+      const response = await fetch(`/api/flights/search?${queryParams.toString()}`);
       const data = await response.json();
       
       // Filter by max price if set (convert max price to EUR for comparison)
@@ -121,9 +134,9 @@ export default function FlightSearch() {
         flightNumber: flight.flightNumber,
         airline: flight.airline,
         departureTime: departureTime,
-        adults: searchParams.adults,
-        children: searchParams.children,
-        infants: searchParams.infants
+        adults: searchParams.adults || 1,
+        children: searchParams.children || 0,
+        infants: searchParams.infants || 0
       });
 
       const response = await fetch('/api/flights/track', {
@@ -143,9 +156,9 @@ export default function FlightSearch() {
           targetPrice: trackingPrice,
           currency: trackingCurrency,
           bookingUrl: flight.bookingUrl,
-          adults: searchParams.adults,
-          children: searchParams.children,
-          infants: searchParams.infants,
+          adults: searchParams.adults || 1,
+          children: searchParams.children || 0,
+          infants: searchParams.infants || 0,
           isRoundTrip: !!searchParams.returnDate,
           returnDate: searchParams.returnDate,
         }),
@@ -341,12 +354,12 @@ export default function FlightSearch() {
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('adults', -1)}
-                            disabled={searchParams.adults === 1}
+                            disabled={(searchParams.adults || 0) === 1}
                             className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             -
                           </button>
-                          <span className="roman-body font-semibold w-8 text-center">{searchParams.adults}</span>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.adults || 1}</span>
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('adults', 1)}
@@ -366,12 +379,12 @@ export default function FlightSearch() {
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('children', -1)}
-                            disabled={searchParams.children === 0}
+                            disabled={(searchParams.children || 0) === 0}
                             className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             -
                           </button>
-                          <span className="roman-body font-semibold w-8 text-center">{searchParams.children}</span>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.children || 0}</span>
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('children', 1)}
@@ -391,12 +404,12 @@ export default function FlightSearch() {
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('infants', -1)}
-                            disabled={searchParams.infants === 0}
+                            disabled={(searchParams.infants || 0) === 0}
                             className="w-8 h-8 rounded-full border-2 border-amber-500 dark:border-orange-500 text-amber-700 dark:text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             -
                           </button>
-                          <span className="roman-body font-semibold w-8 text-center">{searchParams.infants}</span>
+                          <span className="roman-body font-semibold w-8 text-center">{searchParams.infants || 0}</span>
                           <button
                             type="button"
                             onClick={() => updatePassengerCount('infants', 1)}
