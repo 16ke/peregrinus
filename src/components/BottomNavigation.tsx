@@ -7,11 +7,11 @@ import { usePathname } from 'next/navigation';
 import { Search, Bell, BarChart3, User } from 'lucide-react';
 
 export default function BottomNavigation() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const pathname = usePathname();
 
-  // Don't show bottom nav while loading, when no user, or on auth pages
-  if (loading || !user || pathname === '/login' || pathname === '/register') {
+  // Don't show bottom nav on auth pages or if user not logged in
+  if (!user || pathname === '/login' || pathname === '/register') {
     return null;
   }
 
