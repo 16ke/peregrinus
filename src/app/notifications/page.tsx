@@ -1,4 +1,4 @@
-// src/app/notifications/page.tsx - COMPLETE UPDATED VERSION
+// src/app/notifications/page.tsx - FIXED RESPONSIVE VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -185,30 +185,30 @@ export default function Notifications() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 pb-24">
-      <div className="nav-bar rounded-xl shadow-xl p-8">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24">
+      <div className="nav-bar rounded-xl shadow-xl p-4 sm:p-6 md:p-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-            <div className="w-12 h-12 bg-amber-100 dark:bg-orange-100 rounded-full flex items-center justify-center border-2 border-amber-500 dark:border-orange-400">
-              <Bell className="h-6 w-6 text-amber-700 dark:text-orange-600" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
+          <div className="flex items-center space-x-3 md:space-x-4 mb-4 sm:mb-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-100 dark:bg-orange-100 rounded-full flex items-center justify-center border-2 border-amber-500 dark:border-orange-400">
+              <Bell className="h-5 w-5 md:h-6 md:w-6 text-amber-700 dark:text-orange-600" />
             </div>
             <div>
-              <h1 className="text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest">
+              <h1 className="text-2xl sm:text-3xl roman-heading text-amber-800 dark:text-orange-500 tracking-widest break-words">
                 NOTIFICATIONS
               </h1>
-              <p className="roman-body text-amber-700 dark:text-orange-400">
+              <p className="roman-body text-amber-700 dark:text-orange-400 text-sm sm:text-base">
                 Price alerts and flight updates
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             {/* Filter Buttons */}
             <div className="flex border-2 border-amber-300 dark:border-orange-700 rounded-lg overflow-hidden">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 roman-body font-semibold transition-colors ${
+                className={`px-3 py-2 sm:px-4 sm:py-2 roman-body font-semibold transition-colors text-sm sm:text-base ${
                   filter === 'all' 
                     ? 'bg-amber-500 dark:bg-orange-500 text-white' 
                     : 'text-amber-700 dark:text-orange-400 hover:bg-amber-100 dark:hover:bg-orange-900'
@@ -218,7 +218,7 @@ export default function Notifications() {
               </button>
               <button
                 onClick={() => setFilter('unread')}
-                className={`px-4 py-2 roman-body font-semibold transition-colors flex items-center space-x-2 ${
+                className={`px-3 py-2 sm:px-4 sm:py-2 roman-body font-semibold transition-colors flex items-center space-x-1 sm:space-x-2 text-sm sm:text-base ${
                   filter === 'unread' 
                     ? 'bg-amber-500 dark:bg-orange-500 text-white' 
                     : 'text-amber-700 dark:text-orange-400 hover:bg-amber-100 dark:hover:bg-orange-900'
@@ -226,7 +226,7 @@ export default function Notifications() {
               >
                 <span>Unread</span>
                 {unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-6">
+                  <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1 min-w-5 sm:min-w-6 text-xs">
                     {unreadCount}
                   </span>
                 )}
@@ -237,10 +237,10 @@ export default function Notifications() {
             {unreadCount > 0 && (
               <button
                 onClick={() => setShowMarkAllConfirm(true)}
-                className="flex items-center space-x-2 px-4 py-2 border-2 border-amber-500 dark:border-orange-500 text-amber-800 dark:text-orange-400 rounded-lg hover:bg-amber-50 dark:hover:bg-orange-900 transition-colors roman-body font-semibold"
+                className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 border-2 border-amber-500 dark:border-orange-500 text-amber-800 dark:text-orange-400 rounded-lg hover:bg-amber-50 dark:hover:bg-orange-900 transition-colors roman-body font-semibold text-sm sm:text-base"
               >
                 <CheckCheck className="h-4 w-4" />
-                <span>Mark All Read</span>
+                <span className="whitespace-nowrap">Mark All Read</span>
               </button>
             )}
           </div>
@@ -256,7 +256,7 @@ export default function Notifications() {
               <p className="roman-body text-amber-700 dark:text-orange-400 mb-6">
                 This will mark all {unreadCount} unread notifications as read.
               </p>
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowMarkAllConfirm(false)}
                   className="flex-1 px-4 py-2 border-2 border-amber-500 dark:border-orange-500 text-amber-800 dark:text-orange-400 rounded-lg hover:bg-amber-50 dark:hover:bg-orange-900 transition-colors roman-body font-semibold"
@@ -275,7 +275,7 @@ export default function Notifications() {
         )}
 
         {/* Notifications List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {loading ? (
             // Loading Skeleton
             Array.from({ length: 3 }).map((_, index) => (
@@ -293,17 +293,17 @@ export default function Notifications() {
             ))
           ) : filteredNotifications.length === 0 ? (
             // Empty State
-            <div className="text-center py-12">
-              <BellOff className="h-16 w-16 text-amber-400 dark:text-orange-600 mx-auto mb-4" />
-              <h2 className="text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-2">
+            <div className="text-center py-8 sm:py-12">
+              <BellOff className="h-12 w-12 sm:h-16 sm:w-16 text-amber-400 dark:text-orange-600 mx-auto mb-4" />
+              <h2 className="text-xl sm:text-2xl roman-heading text-amber-800 dark:text-orange-500 mb-2">
                 {filter === 'unread' ? 'NO UNREAD NOTIFICATIONS' : 'NO NOTIFICATIONS'}
               </h2>
-              <p className="roman-body text-amber-700 dark:text-orange-400 mb-6">
+              <p className="roman-body text-amber-700 dark:text-orange-400 mb-6 text-sm sm:text-base">
                 {filter === 'unread' 
                   ? 'You\'re all caught up! New price alerts will appear here.' 
                   : 'You\'ll see price alerts and flight updates here when they come in.'}
               </p>
-              <Link href="/tracking-setup" className="search-button inline-block text-lg py-3 px-8">
+              <Link href="/tracking-setup" className="search-button inline-block text-lg py-3 px-6 sm:px-8">
                 TRACK NEW FLIGHTS
               </Link>
             </div>
@@ -312,51 +312,51 @@ export default function Notifications() {
             filteredNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-4 rounded-lg border-2 border-amber-200 dark:border-orange-800 transition-all ${getNotificationColor(notification.type)} ${
+                className={`p-3 sm:p-4 rounded-lg border-2 border-amber-200 dark:border-orange-800 transition-all ${getNotificationColor(notification.type)} ${
                   !notification.isRead ? 'ring-2 ring-amber-300 dark:ring-orange-700' : ''
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex space-x-4 flex-1">
+                  <div className="flex space-x-3 sm:space-x-4 flex-1 min-w-0">
                     <div className="flex-shrink-0">
                       {getNotificationIcon(notification.type)}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mb-2">
                         {notification.trackedFlight && (
                           <Link 
                             href={`/tracked-flight/${notification.trackedFlight.id}`}
-                            className="flex items-center space-x-1 text-amber-700 dark:text-orange-400 hover:text-amber-800 dark:hover:text-orange-300 transition-colors"
+                            className="flex items-center space-x-1 text-amber-700 dark:text-orange-400 hover:text-amber-800 dark:hover:text-orange-300 transition-colors w-fit"
                           >
-                            <Plane className="h-4 w-4" />
-                            <span className="roman-body font-semibold text-sm">
+                            <Plane className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="roman-body font-semibold text-xs sm:text-sm whitespace-nowrap">
                               {notification.trackedFlight.origin} → {notification.trackedFlight.destination}
                             </span>
                           </Link>
                         )}
                         {!notification.isRead && (
-                          <span className="px-2 py-1 bg-amber-500 dark:bg-orange-500 text-white text-xs rounded roman-body font-semibold">
+                          <span className="px-2 py-1 bg-amber-500 dark:bg-orange-500 text-white text-xs rounded roman-body font-semibold w-fit">
                             NEW
                           </span>
                         )}
                       </div>
                       
-                      <p className="roman-body text-amber-800 dark:text-orange-500 mb-2">
+                      <p className="roman-body text-amber-800 dark:text-orange-500 mb-2 text-sm sm:text-base break-words">
                         {notification.message}
                       </p>
 
                       {/* Price change details */}
                       {notification.metadata && (
-                        <div className="flex items-center space-x-4 text-sm text-amber-600 dark:text-orange-400 mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-amber-600 dark:text-orange-400 mb-2">
                           {notification.metadata.oldPrice && notification.metadata.newPrice && (
-                            <span>
+                            <span className="whitespace-nowrap">
                               <span className="line-through">€{notification.metadata.oldPrice}</span> → 
                               <span className="font-semibold"> €{notification.metadata.newPrice}</span>
                             </span>
                           )}
                           {notification.metadata.priceDropPercent && (
-                            <span className={`font-semibold ${
+                            <span className={`font-semibold whitespace-nowrap ${
                               notification.type.includes('drop') ? 'text-green-600' : 'text-red-600'
                             }`}>
                               {notification.metadata.priceDropPercent > 0 ? '↓' : '↑'}
@@ -366,10 +366,10 @@ export default function Notifications() {
                         </div>
                       )}
                       
-                      <div className="flex items-center space-x-4 text-sm text-amber-600 dark:text-orange-400">
-                        <span>{new Date(notification.createdAt).toLocaleDateString()} • {new Date(notification.createdAt).toLocaleTimeString()}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-amber-600 dark:text-orange-400">
+                        <span className="whitespace-nowrap">{new Date(notification.createdAt).toLocaleDateString()} • {new Date(notification.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         {notification.sentViaEmail && (
-                          <span className="flex items-center space-x-1">
+                          <span className="flex items-center space-x-1 whitespace-nowrap">
                             <Bell className="h-3 w-3" />
                             <span>Email</span>
                           </span>
@@ -378,7 +378,7 @@ export default function Notifications() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center space-x-1 sm:space-x-2 ml-2 sm:ml-4 flex-shrink-0">
                     {!notification.isRead && (
                       <button
                         onClick={() => markAsRead(notification.id)}
